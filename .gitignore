@@ -1,0 +1,13 @@
+node_modules/
+data/
+*.sqlite
+*.sqlite-wal
+*.sqlite-shm
+.svelte-kit/
+build/
+.env
+.env.*
+!.env.example
+playwright-report/
+test-results/
+.DS_Store
