@@ -13,16 +13,16 @@ function failure(status: number, message: string, unreadBody = false): Response 
   );
 }
 
-export const GET: RequestHandler = () => {
+export const GET: RequestHandler = ({ url, locals }) => {
   try {
-    return json(getPlanStore().load(), { headers: noStore });
+    return json(getPlanStore(locals.household!.id).load(), { headers: noStore });
   } catch (error) {
     console.error('Failed to load plan', error);
     return failure(500, 'Unable to load plan');
   }
 };
 
-export const PUT: RequestHandler = async ({ request, url }) => {
+export const PUT: RequestHandler = async ({ request, url, locals }) => {
   const origin = request.headers.get('origin');
   if ((origin && origin !== url.origin) || request.headers.get('sec-fetch-site') === 'cross-site')
     return failure(403, 'Forbidden', true);
@@ -74,7 +74,9 @@ export const PUT: RequestHandler = async ({ request, url }) => {
     return failure(400, 'Invalid plan');
   }
   try {
-    return json(getPlanStore().save(save.revision, save.plan), { headers: noStore });
+    return json(getPlanStore(locals.household!.id).save(save.revision, save.plan), {
+      headers: noStore
+    });
   } catch (error) {
     if (error instanceof PlanConflictError) return failure(409, 'Plan revision conflict');
     console.error('Failed to save plan', error);

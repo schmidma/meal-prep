@@ -1,5 +1,6 @@
+import { createKitchenPlan } from '../../tests/fixtures/legacy-plan';
 import { describe, expect, it, vi } from 'vitest';
-import { createKitchenPlan, type KitchenPlan } from './kitchen';
+import { type KitchenPlan } from './kitchen';
 import {
   PlanSync,
   SaveConflict,
@@ -276,8 +277,8 @@ describe('serialized autosave and recovery', () => {
     vi.mocked(f.transport.save).mockRejectedValueOnce(new Error('Offline'));
     await f.sync.start();
     await vi.waitFor(() => expect(f.sync.state.phase).toBe('error'));
-    expect(JSON.parse(f.raw()!)).toEqual({
-      draftVersion: 2,
+    expect(JSON.parse(f.raw()!)).toMatchObject({
+      draftVersion: 3,
       baseRevision: 0,
       latest: changed(9),
       attempted: { schemaVersion: 2, revision: 0, plan: changed(8) }
@@ -313,7 +314,7 @@ describe('serialized autosave and recovery', () => {
     await f.sync.start();
     expect(f.sync.state.phase).toBe('conflict');
     expect(JSON.parse(f.raw()!)).toMatchObject({
-      draftVersion: 2,
+      draftVersion: 3,
       baseRevision: 0,
       latest: changed(9)
     });
@@ -415,4 +416,123 @@ describe('serialized autosave and recovery', () => {
     expect(f.transport.save).not.toHaveBeenCalled();
     expect(f.sync.state.dirty).toBe(false);
   });
+});
+
+describe('shared household refresh', () => {
+  it('hydrates a newer saved copy without issuing a write', async () => {
+    const f = fixture();
+    await f.sync.start();
+    f.replace({ ...initial(), revision: 1, plan: changed(7) });
+    await f.sync.refresh();
+    expect(f.hydrate).toHaveBeenLastCalledWith(changed(7));
+    expect(f.transport.save).not.toHaveBeenCalled();
+    expect(f.sync.state.phase).toBe('saved');
+  });
+  it('merges an independent edit made during a refresh request', async () => {
+    const f = fixture();
+    await f.sync.start();
+    const pending = deferred<PlanDocument>();
+    vi.mocked(f.transport.load).mockImplementationOnce(() => pending.promise);
+    const refresh = f.sync.refresh();
+    f.sync.change(changed(7));
+    const remote = initial();
+    remote.revision = 1;
+    remote.plan.ingredients[1].quantity = 99;
+    f.replace(remote);
+    pending.resolve(remote);
+    await refresh;
+    await saved(f.sync);
+    expect(f.document().plan.ingredients[0].quantity).toBe(7);
+    expect(f.document().plan.ingredients[1].quantity).toBe(99);
+  });
+  it('combines offline recovery with independent remote changes', async () => {
+    const f = fixture();
+    await f.sync.start();
+    vi.mocked(f.transport.save).mockRejectedValueOnce(new Error('offline'));
+    f.sync.change(changed(7));
+    await vi.waitFor(() => expect(f.sync.state.phase).toBe('error'));
+    f.sync.dispose();
+    const remote = initial();
+    remote.revision = 1;
+    remote.plan.ingredients[1].quantity = 99;
+    f.replace(remote);
+    const recovered = new PlanSync({
+      drafts: f.drafts,
+      transport: f.transport,
+      onState: () => {},
+      onHydrate: () => {}
+    });
+    await recovered.start();
+    await saved(recovered);
+    expect(f.document().plan.ingredients[0].quantity).toBe(7);
+    expect(f.document().plan.ingredients[1].quantity).toBe(99);
+  });
+  it('does not hydrate a response if an editor opened while refreshing', async () => {
+    const f = fixture();
+    const pending = deferred<PlanDocument>();
+    let permitted = true;
+    const hydrate = vi.fn();
+    const sync = new PlanSync({
+      drafts: f.drafts,
+      transport: f.transport,
+      onState: () => {},
+      onHydrate: hydrate,
+      canRefresh: () => permitted
+    });
+    await sync.start();
+    vi.mocked(f.transport.load).mockImplementationOnce(() => pending.promise);
+    const refresh = sync.refresh();
+    permitted = false;
+    pending.resolve({ ...initial(), revision: 1, plan: changed(7) });
+    await refresh;
+    expect(hydrate).toHaveBeenCalledTimes(1);
+  });
+});
+
+it('keeps offline refresh quiet and preserves edits if fetching a conflicting copy fails', async () => {
+  const f = fixture();
+  await f.sync.start();
+  vi.mocked(f.transport.load).mockRejectedValueOnce(new Error('offline'));
+  await f.sync.refresh();
+  expect(f.sync.state.phase).toBe('saved');
+  const remote = initial();
+  remote.revision = 1;
+  remote.plan.ingredients[1].quantity = 99;
+  f.replace(remote);
+  vi.mocked(f.transport.load).mockRejectedValueOnce(new Error('offline'));
+  f.sync.change(changed(7));
+  await vi.waitFor(() => expect(f.sync.state.phase).toBe('error'));
+  expect(JSON.parse(f.raw()!).attempted.plan.ingredients[0].quantity).toBe(7);
+  await f.sync.retry();
+  await saved(f.sync);
+  expect(f.document().plan.ingredients[0].quantity).toBe(7);
+  expect(f.document().plan.ingredients[1].quantity).toBe(99);
+});
+
+it('defers conflict merging while an editor is active, then retries safely', async () => {
+  const f = fixture();
+  let permitted = true;
+  const hydrate = vi.fn();
+  const sync = new PlanSync({
+    drafts: f.drafts,
+    transport: f.transport,
+    onState: () => {},
+    onHydrate: hydrate,
+    canRefresh: () => permitted
+  });
+  await sync.start();
+  const remote = initial();
+  remote.revision = 1;
+  remote.plan.ingredients[1].quantity = 99;
+  f.replace(remote);
+  permitted = false;
+  sync.change(changed(7));
+  await vi.waitFor(() => expect(sync.state.phase).toBe('error'));
+  expect(hydrate).toHaveBeenCalledTimes(1);
+  expect(JSON.parse(f.raw()!).baseRevision).toBe(0);
+  permitted = true;
+  await sync.retry();
+  await saved(sync);
+  expect(f.document().plan.ingredients[0].quantity).toBe(7);
+  expect(f.document().plan.ingredients[1].quantity).toBe(99);
 });

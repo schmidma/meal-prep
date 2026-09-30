@@ -1,0 +1,4015 @@
+.weekly-app,
+.wp-dialog {
+  --wp-ink: #283e33;
+  --wp-muted: #6b756e;
+  --wp-green: #42694e;
+  --wp-border: #e4e7df;
+  color: var(--wp-ink);
+  font-family: var(--font-ui);
+  line-height: 1.5;
+  color-scheme: light;
+}
+.weekly-app {
+  display: flex;
+  min-height: 100dvh;
+  background: #fafaf6;
+}
+.weekly-app button,
+.wp-dialog button {
+  transition:
+    background 0.15s,
+    box-shadow 0.15s,
+    transform 0.15s;
+}
+.weekly-app button:disabled {
+  cursor: not-allowed;
+}
+.weekly-app h1,
+.wp-dialog h2 {
+  font-family: var(--font-display);
+  font-weight: 400;
+  letter-spacing: -1.5px;
+}
+.weekly-app h2 {
+  font-family: var(--font-ui);
+  font-weight: 600;
+  letter-spacing: -0.4px;
+}
+.wp-sidebar {
+  width: 216px;
+  flex-shrink: 0;
+  position: sticky;
+  top: 0;
+  height: 100dvh;
+  padding: 36px 22px 24px;
+  border-right: 1px solid var(--wp-border);
+  background: #f3f4ee;
+  display: flex;
+  flex-direction: column;
+}
+.wp-brand {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 9px;
+  font-weight: 750;
+  font-size: 23px;
+  text-decoration: none;
+  letter-spacing: -1px;
+  color: #294530;
+}
+.wp-brand-logo {
+  display: block;
+  width: 82px;
+  height: 97px;
+  flex-shrink: 0;
+  object-fit: contain;
+}
+.wp-brand .wp-brand-dot {
+  color: #92a077;
+}
+.wp-eyebrow {
+  font-size: 10px;
+  letter-spacing: 1.7px;
+  font-weight: 650;
+  color: #6d7d67;
+}
+.wp-nav-label {
+  margin: 28px 12px 13px;
+}
+.wp-sidebar nav {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.wp-sidebar nav button {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  text-align: left;
+  padding: 13px 12px;
+  border-radius: 7px;
+  font-size: 13px;
+  color: #65715f;
+  min-height: 46px;
+}
+.wp-sidebar nav button.active {
+  background: #e2e9da;
+  color: #34503a;
+  font-weight: 650;
+}
+.wp-sidebar nav button:hover {
+  background: #e9eddf;
+}
+.wp-nav-count {
+  margin-left: auto;
+  font-size: 11px;
+  background: #f7f8f2;
+  border-radius: 5px;
+  padding: 1px 6px;
+}
+.wp-sidebar-account {
+  margin-top: auto;
+  padding-top: 18px;
+  border-top: 1px solid var(--wp-border);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.wp-account-avatar {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: #e2e9da;
+  color: var(--wp-green);
+  font-size: 13px;
+  font-weight: 600;
+}
+.wp-sidebar-account > div {
+  min-width: 0;
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+.wp-sidebar-account small {
+  display: block;
+  font-size: 11px;
+  color: var(--wp-muted);
+}
+.wp-account-signout {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 6px;
+  padding: 4px 6px;
+  margin-left: -6px;
+  border-radius: 5px;
+  color: var(--wp-muted);
+  font-size: 12px;
+}
+.wp-account-signout:hover {
+  background: #e2e9da;
+  color: var(--wp-ink);
+}
+.wp-signout-error {
+  font-size: 12px;
+  color: #963f32;
+}
+.wp-main {
+  min-width: 0;
+  flex: 1;
+}
+.wp-topbar {
+  height: 78px;
+  border-bottom: 1px solid var(--wp-border);
+  display: flex;
+  align-items: center;
+  padding: 0 38px;
+  font-size: 11px;
+}
+.wp-save {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: #707c70;
+  font-size: 11px;
+}
+.wp-save > span {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #be8c4e;
+}
+.wp-save > span.saved {
+  background: #7f9c70;
+}
+.wp-content {
+  padding: 40px 38px 45px;
+  max-width: 1650px;
+  margin: auto;
+}
+.wp-intro {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  margin-bottom: 43px;
+}
+.wp-intro h1 {
+  font-size: clamp(31px, 3vw, 45px);
+  line-height: 1.2;
+  margin: 10px 0 12px;
+}
+.wp-intro > div > p:last-child {
+  font-size: 13px;
+  color: var(--wp-muted);
+}
+.wp-primary,
+.wp-secondary {
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+  padding: 11px 17px;
+  border-radius: 7px;
+  font-size: 12px;
+  font-weight: 600;
+  min-height: 42px;
+  white-space: nowrap;
+}
+.wp-primary {
+  background: #42694e;
+  color: white;
+  box-shadow: 0 2px 3px #233d2010;
+}
+.wp-primary:hover {
+  background: #31583e;
+}
+.wp-secondary {
+  border: 1px solid #dfe4d8;
+  background: #fff;
+  color: #435743;
+}
+.wp-secondary:hover {
+  background: #eff3e8;
+}
+.wp-week-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  gap: 12px;
+}
+.wp-week-title {
+  display: flex;
+  align-items: center;
+  gap: 17px;
+}
+.wp-week-title h2 {
+  font-size: 20px;
+}
+.wp-week-controls {
+  display: flex;
+  align-items: center;
+  border: 1px solid var(--wp-border);
+  border-radius: 7px;
+  background: white;
+  overflow: hidden;
+}
+.wp-week-controls button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 35px;
+  height: 34px;
+  font-size: 11px;
+}
+.wp-week-controls button:hover {
+  background: #eef2e9;
+}
+.wp-week {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 10px;
+}
+.wp-day {
+  background: #f1f2eb;
+  border: 1px solid #ebede5;
+  border-radius: 10px;
+  padding: 10px 8px;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+.wp-day.wp-today {
+  background: #eaf0e3;
+  border-color: #cfdbc4;
+}
+.wp-day.wp-drop {
+  outline: 2px solid #658757;
+  outline-offset: 2px;
+}
+.wp-day-heading {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 1px 3px 15px;
+  border-bottom: 1px solid #e1e5d9;
+  margin-bottom: 16px;
+  min-height: 46px;
+  flex-wrap: wrap;
+}
+.wp-day-heading > span {
+  font-size: 11px;
+  color: #74806e;
+}
+.wp-day-heading strong {
+  font-size: 18px;
+  font-weight: 550;
+}
+.wp-day-heading small {
+  font-size: 8px;
+  color: #fff;
+  background: #42694e;
+  border-radius: 4px;
+  padding: 2px 4px;
+  margin-left: auto;
+}
+.wp-slot {
+  margin-bottom: 17px;
+  min-height: 156px;
+}
+.wp-slot > p {
+  font-size: 10px;
+  color: #737d6d;
+  margin: 0 3px 8px;
+}
+.wp-meal {
+  display: flex;
+  width: 100%;
+  flex-direction: column;
+  text-align: left;
+  gap: 12px;
+  padding: 12px 10px;
+  border: 1px solid #e3e6dc;
+  border-radius: 8px;
+  background: #fffefb;
+  margin-bottom: 8px;
+  min-height: 130px;
+  box-shadow: 0 2px 3px #273e2710;
+}
+.wp-meal:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px #273e271a;
+}
+.wp-meal strong {
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+.wp-meal-symbol {
+  display: inline-flex;
+  border-radius: 50%;
+  background: #f7ead5;
+  color: #a57a45;
+  width: 33px;
+  height: 33px;
+  align-items: center;
+  justify-content: center;
+}
+.wp-meal.leftovers .wp-meal-symbol {
+  background: #e8efdf;
+  color: #6c8554;
+}
+.wp-meal.easy .wp-meal-symbol {
+  background: #f0eae0;
+  color: #9a8263;
+}
+.wp-empty-slot {
+  width: 100%;
+  border: 1px dashed #dce0d2;
+  min-height: 130px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 9px;
+  font-size: 9px;
+}
+.wp-empty-slot:hover {
+  background: #e5ecdc;
+  color: #405f3f;
+}
+.wp-week-caption {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 10px;
+  color: #7c8474;
+  margin: 17px 0 33px;
+}
+.wp-week-caption > span {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.wp-dot:not(:first-child) {
+  margin-left: 10px;
+}
+.wp-panel {
+  padding: 22px;
+  border: 1px solid var(--wp-border);
+  border-radius: 12px;
+  background: #fff;
+  min-width: 0;
+}
+.wp-panel-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.wp-panel-heading > div {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+.wp-panel-heading h2 {
+  font-size: 15px;
+}
+.wp-leftover-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 11px 0;
+  border-bottom: 1px solid #f0f1eb;
+}
+.wp-leftover-row:last-child {
+  border: 0;
+}
+.wp-leftover-name {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 0;
+  min-width: 0;
+  text-align: left;
+  flex: 1;
+}
+.wp-food-icon {
+  width: 38px;
+  height: 38px;
+  background: #edf1e5;
+  border-radius: 9px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #8c996b;
+  flex-shrink: 0;
+}
+.wp-leftover-name strong {
+  font-size: 12px;
+  display: block;
+  font-weight: 550;
+  overflow-wrap: anywhere;
+}
+.wp-leftover-name small {
+  font-size: 10px;
+  color: #858b7e;
+}
+.wp-inline-add {
+  display: flex;
+  border: 1px solid #e3e7dc;
+  border-radius: 7px;
+  background: #fafbf7;
+  margin-bottom: 10px;
+  overflow: hidden;
+}
+.wp-inline-add input {
+  flex: 1;
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  min-width: 0;
+  font-size: 12px;
+  padding: 11px;
+}
+.wp-inline-add button {
+  padding: 8px 12px;
+  display: flex;
+  align-items: center;
+  color: #729062;
+}
+.wp-check-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 0;
+  font-size: 12px;
+  cursor: pointer;
+  overflow-wrap: anywhere;
+  min-width: 0;
+}
+.wp-check-row input {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+  margin: 0;
+  accent-color: #527a4c;
+}
+.wp-check-row > span {
+  min-width: 0;
+}
+.wp-note > p:not(.wp-eyebrow) {
+  font-size: 11px;
+  color: #758365;
+  position: relative;
+}
+.wp-empty-panel {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  padding: 24px 0;
+  color: #8b9a7f;
+}
+.wp-empty-panel p {
+  font-size: 12px;
+  color: #65705e;
+}
+.wp-empty-panel span {
+  font-size: 11px;
+  color: #858d7b;
+}
+.wp-search {
+  width: 350px;
+  max-width: 100%;
+  margin-bottom: 25px;
+  padding: 12px;
+  background: #fff;
+  border: 1px solid #dfe4d8;
+}
+.wp-recipe-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr));
+  gap: 22px;
+}
+.wp-recipe {
+  background: #fff;
+  border: 1px solid #e0e5d9;
+  border-radius: 12px;
+  overflow: hidden;
+  padding-bottom: 20px;
+}
+.wp-recipe-art {
+  height: 125px;
+  background: #eaf0e2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 10px;
+  color: #7e986b;
+}
+.wp-recipe-art span {
+  font-size: 8px;
+  letter-spacing: 2px;
+}
+.wp-recipe-title {
+  display: block;
+  text-align: left;
+  padding: 20px 20px 10px;
+  width: 100%;
+}
+.wp-recipe-title h2 {
+  font-size: 20px;
+  overflow-wrap: anywhere;
+}
+.wp-recipe-title > span {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 11px;
+  color: #7f8974;
+  margin-top: 7px;
+}
+.wp-recipe > p {
+  font-size: 12px;
+  color: #737d6c;
+  padding: 0 20px;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.wp-recipe-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px 20px 0;
+}
+.wp-large-empty {
+  padding: 60px 20px;
+  text-align: center;
+  grid-column: 1/-1;
+  color: #738565;
+}
+.wp-large-empty > svg {
+  margin-bottom: 20px;
+}
+.wp-large-empty h2 {
+  font-size: 23px;
+  color: #435b3f;
+  margin-bottom: 10px;
+}
+.wp-large-empty p {
+  font-size: 13px;
+  color: #7e8775;
+  margin-bottom: 22px;
+}
+.wp-shopping-panel {
+  max-width: 700px;
+  background: #fff;
+  border: 1px solid #e0e6d9;
+  border-radius: 12px;
+  padding: 24px;
+}
+.wp-shopping-row {
+  display: flex;
+  align-items: center;
+  border-bottom: 1px solid #edf0e7;
+  justify-content: space-between;
+  gap: 10px;
+}
+.wp-shopping-row .wp-check-row {
+  padding: 16px 0;
+  flex: 1;
+}
+.wp-checked {
+  color: #8d9683;
+  text-decoration: line-through;
+}
+.wp-icon-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 6px;
+  flex-shrink: 0;
+}
+.wp-icon-button:hover {
+  background: #edf1e7;
+}
+.wp-toast {
+  position: fixed;
+  bottom: 24px;
+  left: calc(50% + 108px);
+  transform: translateX(-50%);
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: #2e4c36;
+  color: #fff;
+  padding: 12px 16px;
+  border-radius: 9px;
+  box-shadow: 0 6px 25px #1b352330;
+  font-size: 12px;
+  max-width: calc(100vw - 24px);
+}
+.wp-toast span {
+  white-space: nowrap;
+}
+.wp-toast button {
+  color: #e2edce;
+  text-decoration: underline;
+  display: flex;
+  align-items: center;
+  min-height: 28px;
+}
+.wp-alert {
+  margin: 15px;
+  padding: 16px;
+  border: 1px solid #dacaa2;
+  background: #fff7e5;
+  border-radius: 8px;
+  color: #715c2f;
+  font-size: 13px;
+}
+.wp-alert > div {
+  display: flex;
+  gap: 16px;
+  margin-top: 10px;
+  flex-wrap: wrap;
+}
+.wp-alert button {
+  text-decoration: underline;
+}
+.wp-dialog {
+  border: 1px solid #e1e6d9;
+  border-radius: 15px;
+  background: #fffefa;
+  padding: 28px;
+  max-width: 510px;
+  width: calc(100% - 28px);
+  max-height: calc(100dvh - 32px);
+  overflow: auto;
+  box-shadow: 0 20px 100px #1b352333;
+}
+.wp-dialog::backdrop {
+  background: #273c3260;
+  backdrop-filter: blur(3px);
+}
+.wp-dialog form > header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 25px;
+  gap: 12px;
+}
+.wp-dialog h2 {
+  font-size: 32px;
+  margin-top: 7px;
+}
+.wp-field {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  font-size: 12px;
+  font-weight: 550;
+  margin: 17px 0;
+}
+.wp-field > span {
+  font-size: 11px;
+  font-weight: 400;
+  color: #828b78;
+}
+.wp-field input,
+.wp-field textarea,
+.wp-field select {
+  background: white;
+  color: #2e4434;
+  border: 1px solid #d9e0d0;
+  border-radius: 7px;
+  padding: 11px;
+  font-size: 14px;
+  min-height: 43px;
+}
+.wp-field textarea {
+  resize: vertical;
+}
+.wp-style-picker label:has(:focus-visible) {
+  outline: 3px solid #658b68;
+  outline-offset: 2px;
+}
+.wp-dialog footer {
+  border-top: 1px solid #e4e8dc;
+  padding-top: 20px;
+  margin-top: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.wp-dialog footer > div {
+  display: flex;
+  gap: 8px;
+  margin-left: auto;
+}
+.wp-delete {
+  color: #986257;
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  font-size: 12px;
+  min-height: 42px;
+}
+.wp-modal-help {
+  font-size: 12px;
+  color: #7c876e;
+  line-height: 1.7;
+}
+@media (min-width: 1600px) {
+  .wp-content {
+    padding-top: 55px;
+  }
+  .wp-day {
+    padding: 14px 10px;
+  }
+  .wp-meal {
+    padding: 16px 13px;
+    min-height: 150px;
+  }
+  .wp-slot {
+    min-height: 176px;
+  }
+  .wp-empty-slot {
+    min-height: 150px;
+  }
+  .wp-meal strong {
+    font-size: 14px;
+  }
+  .wp-intro {
+    margin-bottom: 50px;
+  }
+}
+@media (max-width: 1200px) {
+  .wp-sidebar {
+    width: 180px;
+    padding: 30px 15px;
+  }
+  .wp-brand {
+    font-size: 21px;
+  }
+  .wp-content {
+    padding: 30px 24px;
+  }
+  .wp-topbar {
+    padding: 0 24px;
+  }
+  .wp-week {
+    gap: 6px;
+  }
+  .wp-day {
+    padding: 8px 5px;
+  }
+  .wp-meal {
+    padding: 10px 7px;
+  }
+  .wp-day-heading {
+    gap: 5px;
+  }
+  .wp-day-heading small {
+    display: none;
+  }
+  .wp-toast {
+    left: calc(50% + 90px);
+  }
+}
+@media (max-width: 950px) and (min-width: 701px) {
+  .wp-sidebar {
+    width: 155px;
+    padding: 25px 10px;
+  }
+  .wp-brand {
+    font-size: 18px;
+    gap: 4px;
+  }
+  .wp-week {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+  .wp-intro {
+    align-items: flex-start;
+  }
+  .wp-intro h1 {
+    font-size: 32px;
+  }
+  .wp-intro > .wp-primary {
+    margin-top: 26px;
+  }
+  .wp-toast {
+    left: calc(50% + 77px);
+  }
+}
+@media (max-width: 700px) {
+  html {
+    scroll-padding-bottom: calc(90px + env(safe-area-inset-bottom));
+  }
+  .weekly-app {
+    display: block;
+    padding-bottom: 76px;
+  }
+  .wp-sidebar {
+    position: static;
+    height: auto;
+    width: auto;
+    padding: 19px 20px;
+    background: #fafaf6;
+    border: 0;
+  }
+  .wp-brand {
+    font-size: 18px;
+    gap: 3px;
+  }
+  .wp-sidebar .wp-brand {
+    width: fit-content;
+  }
+  .wp-sidebar .wp-brand-logo {
+    width: 48px;
+    height: 57px;
+  }
+  .wp-nav-label,
+  .wp-sidebar-account {
+    display: none;
+  }
+  .wp-sidebar nav {
+    position: fixed;
+    z-index: 20;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    flex-direction: row;
+    justify-content: space-around;
+    padding: 9px 8px max(9px, env(safe-area-inset-bottom));
+    background: #fffffff5;
+    backdrop-filter: blur(10px);
+    border-top: 1px solid #e1e7d9;
+    gap: 4px;
+  }
+  .wp-sidebar nav button {
+    flex: 1;
+    flex-direction: column;
+    gap: 4px;
+    font-size: 10px;
+    padding: 6px;
+    min-height: 49px;
+  }
+  .wp-nav-count {
+    display: none;
+  }
+  .wp-topbar {
+    position: absolute;
+    right: 20px;
+    top: 22px;
+    padding: 0;
+    height: 24px;
+    border: 0;
+  }
+  .wp-save {
+    font-size: 9px;
+  }
+  .wp-content {
+    padding: 20px 20px 25px;
+  }
+  .wp-intro {
+    display: block;
+  }
+  .wp-intro .wp-eyebrow {
+    font-size: 8px;
+    letter-spacing: 1.4px;
+  }
+  .wp-intro h1 {
+    line-height: 1.12;
+  }
+  .wp-intro > div > p:last-child {
+    font-size: 12px;
+    line-height: 1.7;
+  }
+  .wp-intro > .wp-primary,
+  .wp-intro > .wp-secondary {
+    margin-top: 21px;
+  }
+  .wp-intro > .wp-primary {
+    width: 100%;
+    font-size: 13px;
+    min-height: 46px;
+  }
+  .wp-week-toolbar {
+    align-items: center;
+    margin-bottom: 15px;
+  }
+  .wp-week-title {
+    display: block;
+  }
+  .wp-week-title h2 {
+    font-size: 21px;
+    margin-bottom: 3px;
+  }
+  .wp-week-controls button {
+    height: 36px;
+    min-width: 31px;
+  }
+  .wp-week {
+    display: flex;
+    flex-direction: column;
+  }
+  .wp-day {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+  }
+  .wp-day-heading {
+    grid-column: 1/-1;
+    margin: 0 0 0;
+    padding: 0 0 11px;
+    min-height: 0;
+    gap: 8px;
+  }
+  .wp-day-heading strong {
+    font-size: 19px;
+  }
+  .wp-day-heading small {
+    display: block;
+    font-size: 9px;
+    padding: 3px 6px;
+  }
+  .wp-slot {
+    margin: 0;
+  }
+  .wp-slot > p {
+    font-size: 10px;
+  }
+  .wp-meal {
+    margin-bottom: 7px;
+  }
+  .wp-empty-slot {
+    font-size: 10px;
+  }
+  .wp-week-caption {
+    margin: 20px 0;
+    flex-direction: column;
+    gap: 9px;
+    font-size: 10px;
+  }
+  .wp-week-caption > p {
+    display: none;
+  }
+  .wp-panel {
+    padding: 20px;
+  }
+  .wp-toast {
+    bottom: 88px;
+    left: 50%;
+    gap: 8px;
+    padding: 10px 12px;
+    font-size: 11px;
+  }
+  .wp-toast span {
+    white-space: normal;
+  }
+  .wp-dialog {
+    padding: 22px;
+    max-height: calc(100dvh - 24px);
+    margin: auto;
+  }
+  .wp-dialog h2 {
+    font-size: 29px;
+  }
+  .wp-field input,
+  .wp-field select,
+  .wp-field textarea {
+    font-size: 16px;
+  }
+  .wp-dialog footer {
+    flex-wrap: wrap;
+  }
+  .wp-shopping-panel {
+    padding: 16px;
+  }
+  .wp-shopping-row .wp-check-row {
+    font-size: 14px;
+  }
+  .wp-check-row input {
+    width: 19px;
+    height: 19px;
+  }
+  .wp-search {
+    width: 100%;
+  }
+  .wp-recipe-grid {
+    grid-template-columns: 1fr;
+  }
+  .wp-panel-heading h2 {
+    font-size: 16px;
+  }
+  .wp-inline-add input {
+    font-size: 16px;
+  }
+  .wp-large-empty {
+    padding: 35px 10px;
+  }
+  .wp-alert {
+    margin: 12px 20px;
+  }
+  .wp-dialog .wp-alert {
+    margin: 12px 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .weekly-app button,
+  .wp-dialog button {
+    transition: none;
+  }
+  .wp-meal:hover {
+    transform: none;
+  }
+}
+@media (max-width: 700px) {
+  .wp-panel {
+    scroll-margin-top: 16px;
+  }
+  .wp-meal {
+    padding: 10px;
+    gap: 6px;
+  }
+}
+/* Keep supporting labels legible alongside the quiet visual palette. */
+.wp-empty-slot,
+.wp-slot > p {
+  font-size: 11px;
+}
+.wp-slot > p,
+.wp-day-heading > span,
+.wp-week-title > span,
+.wp-week-caption {
+  color: #626d59;
+}
+.wp-day-heading small,
+.wp-leftover-name small {
+  font-size: 10px;
+}
+.wp-empty-slot {
+  color: #66745b;
+}
+.wp-note > p:not(.wp-eyebrow),
+.wp-note > span {
+  color: #5d7050;
+}
+@media (max-width: 700px) {
+  .wp-intro h1 {
+    max-width: none;
+    margin: 9px 0;
+  }
+  .wp-intro > div > p:last-child {
+    max-width: none;
+  }
+  .wp-intro > .wp-primary {
+    margin-top: 16px;
+  }
+}
+.wp-leftover-name {
+  flex-basis: 65%;
+}
+.wp-shop-option {
+  font-size: 12px;
+  line-height: 1.5;
+  border: 1px solid #dfe6d4;
+  background: #f1f5e9;
+  border-radius: 7px;
+  padding: 12px;
+  margin: 15px 0;
+}
+/* Cooking and eating are separate steps, with a shared photographic recipe library. */
+.wp-cooking-section {
+  margin: 0 0 29px;
+  padding: 20px;
+  background: #f0f3e9;
+  border: 1px solid #e0e6d7;
+  border-radius: 12px;
+}
+.wp-cooking-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 15px;
+  margin-bottom: 16px;
+}
+.wp-cooking-heading h2 {
+  font-size: 19px;
+  margin-top: 3px;
+}
+.wp-cooking-cards {
+  display: flex;
+  gap: 13px;
+  flex-wrap: wrap;
+}
+.wp-cooking-card {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  background: #fff;
+  border: 1px solid #dce5d1;
+  border-radius: 9px;
+  padding: 11px;
+  text-align: left;
+  flex: 1 1 300px;
+  max-width: 480px;
+}
+.wp-cooking-card:hover {
+  box-shadow: 0 3px 12px #263e2315;
+  background: #fffef9;
+}
+.wp-cooking-card > img,
+.wp-cooking-symbol {
+  width: 69px;
+  height: 69px;
+  object-fit: cover;
+  border-radius: 7px;
+  flex-shrink: 0;
+}
+.wp-cooking-symbol {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #e7eddf;
+  color: #75915f;
+}
+.wp-cooking-card > span:not(.wp-cooking-symbol) {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  flex: 1;
+  min-width: 0;
+}
+.wp-cooking-card strong {
+  font-size: 14px;
+  overflow-wrap: anywhere;
+}
+.wp-cooking-card small {
+  font-size: 10px;
+  color: #536e44;
+}
+.wp-cooking-card span > span {
+  font-size: 11px;
+  color: #76816a;
+}
+.wp-cooking-card em {
+  font-style: normal;
+  color: #9a6634;
+  font-size: 10px;
+}
+.wp-cooking-empty {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  width: 100%;
+  padding: 8px 0;
+}
+.wp-cooking-empty > div {
+  flex: 1;
+}
+.wp-cooking-empty strong {
+  font-size: 14px;
+  font-weight: 550;
+  color: #485f3f;
+}
+.wp-cooking-empty p {
+  font-size: 12px;
+  color: #758369;
+  margin-top: 5px;
+  max-width: 470px;
+}
+.wp-meal {
+  overflow: hidden;
+}
+.wp-meal-photo {
+  display: block;
+  width: calc(100% + 20px);
+  max-width: none;
+  height: 88px;
+  object-fit: cover;
+  align-self: center;
+  margin: -12px -10px 0;
+  border-radius: 7px 7px 0 0;
+}
+.wp-meal:has(.wp-meal-photo) {
+  padding-top: 12px;
+}
+.wp-recipe-art:has(img) {
+  height: 190px;
+  background: #ecefe3;
+}
+.wp-recipe-art img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.wp-leftover-photo {
+  width: 42px;
+  height: 42px;
+  object-fit: cover;
+  border-radius: 8px;
+  flex-shrink: 0;
+}
+.wp-cook-details summary {
+  cursor: pointer;
+  padding: 7px 0;
+}
+.wp-cooking-dialog {
+  max-width: 650px;
+}
+.wp-cook-warning {
+  font-size: 12px;
+  background: #fff2dc;
+  border: 1px solid #ebd7b2;
+  padding: 10px 12px;
+  border-radius: 6px;
+  color: #865b2c;
+  margin: 10px 0;
+}
+.wp-cook-details {
+  font-size: 12px;
+  color: #657b55;
+  margin-top: 15px;
+}
+.wp-cooking-dialog .wp-alert {
+  margin: 12px 0;
+}
+@media (max-width: 700px) {
+  .wp-cooking-empty {
+    flex-wrap: wrap;
+    gap: 11px;
+  }
+  .wp-cooking-empty > div {
+    flex-basis: calc(100% - 45px);
+  }
+  .wp-cooking-empty .wp-primary {
+    width: 100%;
+    margin-top: 5px;
+  }
+  .wp-cooking-heading h2 {
+    font-size: 17px;
+  }
+  .wp-cooking-card {
+    flex-basis: 100%;
+    max-width: none;
+  }
+  .wp-cooking-card strong {
+    font-size: 13px;
+  }
+  .wp-cooking-card > img,
+  .wp-cooking-symbol {
+    width: 58px;
+    height: 58px;
+  }
+  .wp-meal:has(.wp-meal-photo) {
+    padding-top: 10px;
+  }
+  .wp-cooking-dialog {
+    padding: 20px 16px;
+  }
+  .wp-cooking-dialog footer {
+    position: sticky;
+    bottom: -20px;
+    background: #fffefa;
+    padding-bottom: 10px;
+    z-index: 1;
+  }
+  .wp-cooking-dialog footer > div {
+    width: 100%;
+    justify-content: flex-end;
+  }
+  .wp-cooking-dialog footer .wp-primary {
+    flex: 1;
+  }
+}
+@media (min-width: 701px) {
+  .wp-week {
+    grid-auto-rows: auto;
+  }
+  .wp-day {
+    display: grid;
+    grid-template-rows: subgrid;
+    grid-row: span var(--meal-rows, 4);
+    row-gap: 0;
+  }
+  .wp-slot {
+    min-width: 0;
+  }
+}
+@media (max-width: 700px) {
+  .wp-intro {
+    margin-bottom: 18px;
+  }
+  .wp-intro h1 {
+    font-size: 26px;
+  }
+  .wp-intro > div > p:last-child {
+    display: none;
+  }
+  .wp-intro .wp-eyebrow {
+    display: none;
+  }
+  .wp-cooking-empty p {
+    display: none;
+  }
+  .wp-cooking-section {
+    margin-bottom: 16px;
+    padding: 12px;
+  }
+  .wp-cooking-card > img {
+    width: 42px;
+    height: 42px;
+  }
+  .wp-slot {
+    padding-top: 5px;
+  }
+  .wp-meal-photo {
+    height: 48px;
+    width: 48px;
+    float: left;
+    margin: 0 8px 3px 0;
+    border-radius: 6px;
+  }
+  .wp-meal:has(.wp-meal-photo) {
+    min-height: 80px;
+    padding: 8px;
+  }
+  .wp-meal-symbol {
+    display: none;
+  }
+  .wp-meal {
+    min-height: 72px;
+  }
+}
+.wp-meal {
+  user-select: none;
+  cursor: grab;
+}
+.wp-meal:active {
+  cursor: grabbing;
+}
+.wp-meal > * {
+  pointer-events: none;
+}
+@media (max-width: 700px) {
+  .wp-meal:has(.wp-meal-photo) {
+    display: grid;
+    text-align: left;
+  }
+  .wp-meal:has(.wp-meal-photo) .wp-meal-photo {
+    margin: 0;
+    grid-row: span 2;
+  }
+  .wp-meal:has(.wp-meal-photo) .wp-tag {
+    margin: 0;
+  }
+}
+@media (max-width: 700px) {
+  .wp-cook-chosen:not(:has(img)) .wp-field {
+    grid-column: 1/-1;
+  }
+  .wp-slot {
+    min-height: 0;
+    margin-bottom: 0;
+  }
+  .wp-empty-slot {
+    min-height: 48px;
+    flex-direction: row;
+    gap: 6px;
+  }
+  .wp-day {
+    padding: 10px;
+    gap: 8px;
+  }
+  .wp-day-heading {
+    padding-bottom: 7px;
+  }
+}
+@media (max-width: 700px) {
+  .wp-cooking-dialog footer {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+}
+@media (max-width: 700px) {
+  .wp-cooking-dialog header {
+    margin-bottom: 14px;
+  }
+  .wp-content {
+    padding-top: 12px;
+  }
+  .wp-day {
+    scroll-margin-top: 12px;
+  }
+}
+.wp-meal-details {
+  margin: 8px 0 18px;
+}
+.wp-meal-details > summary {
+  font-size: 13px;
+  color: #53694a;
+  cursor: pointer;
+  padding: 10px 0;
+}
+.wp-meal-details[open] > summary {
+  margin-bottom: 12px;
+}
+@media (min-width: 951px) {
+  .wp-slot {
+    min-height: 115px;
+    margin-bottom: 12px;
+  }
+  .wp-empty-slot {
+    min-height: 94px;
+  }
+  .wp-meal {
+    min-height: 105px;
+  }
+  .wp-meal-symbol {
+    width: 30px;
+    height: 30px;
+    margin-bottom: 5px;
+  }
+  .wp-meal-photo {
+    height: 58px;
+  }
+  .wp-meal strong {
+    font-size: 12px;
+  }
+}
+.wp-week-labels {
+  display: none;
+}
+.wp-shopping-origin {
+  display: block;
+  color: #58654f;
+  font-size: 11px;
+  font-weight: 400;
+  margin-top: 3px;
+  line-height: 1.45;
+  text-decoration: none;
+}
+.wp-cooking-card small,
+.wp-cooking-card > span > span {
+  color: #526049;
+}
+@media (min-width: 701px) {
+  .wp-content {
+    padding-top: 18px;
+  }
+  .wp-intro {
+    margin-bottom: 18px;
+    align-items: center;
+  }
+  .wp-intro .wp-eyebrow,
+  .wp-intro > div > p:last-child {
+    display: none;
+  }
+  .wp-intro h1 {
+    font-size: 27px;
+    margin: 0;
+  }
+  .wp-week-toolbar {
+    margin-bottom: 14px;
+  }
+  .wp-cooking-section {
+    padding: 12px;
+    margin-bottom: 16px;
+  }
+  .wp-cooking-heading .wp-eyebrow {
+    display: none;
+  }
+  .wp-cooking-heading {
+    margin-bottom: 10px;
+  }
+  .wp-cooking-heading h2 {
+    font-size: 18px;
+  }
+  .wp-cooking-card {
+    padding: 8px;
+    min-height: 64px;
+  }
+  .wp-cooking-card > img,
+  .wp-cooking-symbol {
+    height: 48px;
+    width: 48px;
+  }
+  .wp-meal-photo {
+    height: 40px;
+  }
+  .wp-meal {
+    padding: 8px;
+    min-height: 90px;
+  }
+  .wp-slot {
+    min-height: 100px;
+    margin-bottom: 9px;
+  }
+  .wp-empty-slot {
+    min-height: 90px;
+  }
+}
+@media (max-width: 700px) {
+  .wp-week-labels {
+    display: grid;
+    grid-template-columns: 36px minmax(0, 1fr) minmax(0, 1fr);
+    gap: 7px;
+    padding: 0 8px 7px;
+    font-size: 12px;
+    font-weight: 650;
+    color: #4d5e44;
+  }
+  .wp-week {
+    gap: 6px;
+  }
+  .wp-day:not(:has(.wp-slot:nth-of-type(3))) {
+    grid-template-columns: 36px minmax(0, 1fr) minmax(0, 1fr);
+    padding: 8px;
+    gap: 7px;
+    align-items: center;
+  }
+  .wp-day:not(:has(.wp-slot:nth-of-type(3))) .wp-day-heading {
+    grid-column: auto;
+    flex-direction: column;
+    align-items: flex-start;
+    border: 0;
+    padding: 0;
+    gap: 2px;
+  }
+  .wp-day:not(:has(.wp-slot:nth-of-type(3))) .wp-day-heading small {
+    margin: 0;
+    font-size: 8px;
+    padding: 2px 3px;
+  }
+  .wp-day:not(:has(.wp-slot:nth-of-type(3))) .wp-slot > p {
+    display: none;
+  }
+  .wp-day:not(:has(.wp-slot:nth-of-type(3))) .wp-meal {
+    min-height: 62px;
+    padding: 6px;
+    margin-bottom: 4px;
+  }
+  .wp-day:not(:has(.wp-slot:nth-of-type(3))) .wp-meal:last-child {
+    margin-bottom: 0;
+  }
+  .wp-day:not(:has(.wp-slot:nth-of-type(3))) .wp-empty-slot {
+    min-height: 44px;
+    font-size: 12px;
+    gap: 4px;
+  }
+  .wp-meal:has(.wp-meal-photo) {
+    gap: 4px;
+  }
+  .wp-meal:has(.wp-meal-photo) strong {
+    font-size: 11px;
+    line-height: 1.35;
+  }
+  .wp-meal:has(.wp-meal-photo) .wp-tag {
+    font-size: 10px;
+    line-height: 1.3;
+  }
+  .wp-meal strong {
+    font-size: 11px;
+  }
+}
+@media (max-width: 700px) {
+  .wp-meal strong,
+  .wp-meal:has(.wp-meal-photo) strong {
+    font-size: 12px;
+  }
+  .wp-meal:has(.wp-meal-photo) {
+    grid-template-columns: 32px minmax(0, 1fr);
+  }
+  .wp-meal:has(.wp-meal-photo) .wp-meal-photo {
+    width: 32px;
+    height: 36px;
+  }
+}
+
+.wp-field > small {
+  font-size: 12px;
+  color: #526049;
+  font-weight: 400;
+}
+@media (max-width: 700px) {
+  .wp-week-intro > div:first-child {
+    display: none;
+  }
+  .wp-week-intro {
+    margin-bottom: 12px;
+  }
+  .wp-cooking-dialog header .wp-eyebrow {
+    display: none;
+  }
+}
+@media (min-width: 701px) {
+  .wp-cooking-dialog footer {
+    position: sticky;
+    bottom: -28px;
+    z-index: 2;
+    background: #fffefa;
+    padding: 12px 0;
+    flex-wrap: wrap;
+  }
+}
+
+/* Shared controls for the focused planning flows. */
+.wp-secondary,
+.wp-primary {
+  justify-content: center;
+}
+.wp-remove-leftover {
+  flex: 0 0 36px;
+  width: 36px;
+  height: 36px;
+  color: #858b7e;
+}
+.wp-leftover-row {
+  flex-wrap: nowrap;
+  gap: 12px;
+}
+.wp-leftover-row .wp-leftover-name {
+  flex: 1 1 0;
+}
+.wp-leftover-name {
+  cursor: grab;
+  user-select: none;
+}
+.wp-leftover-name img,
+.wp-leftover-name span {
+  pointer-events: none;
+}
+.wp-slot.wp-drop {
+  outline: 2px solid #668159;
+  outline-offset: 3px;
+  border-radius: 8px;
+  background: #eaf0e3;
+}
+.wp-use-soon-list {
+  list-style: none;
+  padding: 0;
+  margin: 12px 0 0;
+}
+.wp-use-soon-list li {
+  display: flex;
+  gap: 10px;
+  justify-content: space-between;
+  align-items: center;
+  padding: 9px 0;
+  border-bottom: 1px solid var(--wp-border);
+}
+.wp-use-soon-list .wp-secondary {
+  padding: 6px 10px;
+  min-height: 34px;
+}
+.wp-muted {
+  color: #65705e;
+  font-size: 13px;
+}
+.wp-match {
+  color: #3f6345;
+  font-weight: 600;
+}
+.wp-filter {
+  margin: 12px 0 20px;
+}
+.wp-recipe-input {
+  position: relative;
+  margin-bottom: 18px;
+}
+.wp-recipe-input > .wp-field {
+  margin-bottom: 7px;
+}
+.wp-recipe-input > input {
+  width: 100%;
+  border: 1px solid #ced7c7;
+  border-radius: 7px;
+  padding: 12px;
+  font: inherit;
+  background: #fff;
+  min-height: 44px;
+}
+.wp-recipe-options {
+  position: absolute;
+  z-index: 5;
+  top: 100%;
+  left: 0;
+  right: 0;
+  max-height: 240px;
+  overflow-y: auto;
+  border: 1px solid #c6d1bd;
+  border-radius: 8px;
+  background: white;
+  box-shadow: 0 8px 24px #25351c1a;
+}
+.wp-recipe-options button {
+  display: flex;
+  text-align: left;
+  width: 100%;
+  gap: 12px;
+  align-items: center;
+  padding: 10px 12px;
+  border: 0;
+  background: white;
+  font: inherit;
+  cursor: pointer;
+}
+.wp-recipe-options button:hover,
+.wp-recipe-options button[aria-selected='true'] {
+  background: #eef3e8;
+}
+.wp-recipe-options img {
+  width: 40px;
+  height: 40px;
+  border-radius: 6px;
+  object-fit: cover;
+}
+.wp-recipe-options small {
+  display: block;
+  color: #65705e;
+  font-size: 12px;
+  margin-top: 3px;
+}
+.wp-flow-section {
+  margin: 0 0 20px;
+  padding: 18px;
+  border: 1px solid #dce3d5;
+  border-radius: 10px;
+  background: #fff;
+}
+.wp-flow-section > h3 {
+  margin: -18px -18px 18px;
+  padding: 12px 18px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border-bottom: 1px solid #dce3d5;
+  background: #f1f4ec;
+  border-radius: 10px 10px 0 0;
+  font-size: 15px;
+}
+.wp-flow-section > h3 > span {
+  display: grid;
+  place-items: center;
+  border: 1px solid #b7c7ad;
+  border-radius: 50%;
+  width: 24px;
+  height: 24px;
+  font-size: 12px;
+  color: #48613b;
+}
+.wp-day-picker {
+  margin: 16px 0;
+}
+.wp-day-picker-heading {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 13px;
+  margin-bottom: 8px;
+}
+.wp-day-picker-heading span {
+  color: #65705e;
+  font-weight: 400;
+}
+.wp-day-buttons {
+  display: grid;
+  grid-template-columns: 25px repeat(7, minmax(0, 1fr)) 25px;
+  gap: 4px;
+  align-items: center;
+}
+.wp-day-buttons button {
+  border: 1px solid #dce3d5;
+  background: #fff;
+  border-radius: 7px;
+  min-height: 52px;
+  padding: 5px 1px;
+  font: inherit;
+  cursor: pointer;
+}
+.wp-day-buttons button span {
+  display: block;
+  font-size: 11px;
+  color: #65705e;
+  margin-bottom: 4px;
+}
+.wp-day-buttons button strong {
+  display: block;
+  font-size: 14px;
+}
+.wp-day-buttons .wp-icon-button {
+  width: 25px;
+  border: 0;
+}
+.wp-day-buttons button[aria-pressed='true'] {
+  background: #e5eedc;
+  border-color: #55734b;
+  box-shadow: inset 0 0 0 1px #55734b;
+}
+.wp-other-date {
+  font-size: 12px;
+  margin-top: 9px;
+  color: #57674c;
+}
+.wp-other-date summary {
+  cursor: pointer;
+  width: fit-content;
+}
+.wp-other-date input {
+  font: inherit;
+  padding: 10px;
+  border: 1px solid #cbd5c3;
+  border-radius: 7px;
+  margin-top: 8px;
+}
+.wp-portions-field {
+  max-width: 150px;
+  margin-top: 16px;
+}
+.wp-cook-warning .wp-secondary {
+  margin-top: 10px;
+}
+.wp-meal-choices,
+.wp-ready-options {
+  display: grid;
+  gap: 10px;
+  margin: 16px 0;
+}
+.wp-meal-choices > button,
+.wp-ready-card {
+  display: flex;
+  align-items: center;
+  text-align: left;
+  gap: 14px;
+  padding: 16px;
+  border: 1px solid #d8e1ce;
+  border-radius: 9px;
+  background: white;
+  color: #253b29;
+  font: inherit;
+  cursor: pointer;
+}
+.wp-meal-choices > button:hover,
+.wp-ready-card:hover {
+  background: #f0f4e9;
+  border-color: #8aa079;
+}
+.wp-meal-choices > button > span {
+  flex: 1;
+}
+.wp-meal-choices strong,
+.wp-ready-card strong {
+  display: block;
+  font-size: 15px;
+}
+.wp-meal-choices small,
+.wp-ready-card small {
+  display: block;
+  margin-top: 5px;
+  color: #65705e;
+  font-size: 13px;
+  line-height: 1.5;
+}
+.wp-ready-card img {
+  width: 50px;
+  height: 50px;
+  border-radius: 7px;
+  object-fit: cover;
+}
+.wp-shopping-row.wp-stable-shopping {
+  display: grid;
+  grid-template-columns: 22px minmax(0, 1fr) 36px 36px;
+  gap: 10px;
+  height: 82px;
+  text-decoration: none;
+}
+.wp-stable-shopping > input {
+  width: 19px;
+  height: 19px;
+  accent-color: #526d46;
+  cursor: pointer;
+}
+.wp-shopping-text {
+  min-width: 0;
+}
+.wp-shopping-text > label {
+  display: flex;
+  align-items: center;
+  min-height: 36px;
+  max-height: 36px;
+  overflow: hidden;
+  cursor: pointer;
+  font-size: 14px;
+}
+.wp-stable-shopping.wp-checked .wp-shopping-text > label {
+  text-decoration: line-through;
+}
+.wp-shopping-text form {
+  margin: 0;
+  height: 36px;
+}
+.wp-shopping-text form input {
+  width: 100%;
+  min-width: 0;
+  height: 36px;
+  padding: 6px 8px;
+  font: inherit;
+  font-size: 14px;
+  border: 1px solid #8fa47f;
+  border-radius: 6px;
+  background: #fff;
+}
+.wp-shopping-text .wp-shopping-origin {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  margin: 2px 0 0;
+  height: 17px;
+}
+@media (max-width: 700px) {
+  .wp-flow-section {
+    padding: 12px;
+    margin-bottom: 14px;
+  }
+  .wp-flow-section > h3 {
+    margin: -12px -12px 12px;
+    padding: 10px 12px;
+  }
+  .wp-cooking-dialog .wp-week-picker > div:has(button:nth-of-type(3)) {
+    grid-template-columns: 33px 18px repeat(3, minmax(0, 1fr));
+  }
+  .wp-day-buttons {
+    gap: 2px;
+    grid-template-columns: 20px repeat(7, minmax(0, 1fr)) 20px;
+  }
+  .wp-day-buttons .wp-icon-button {
+    width: 20px;
+  }
+  .wp-shopping-row.wp-stable-shopping {
+    gap: 6px;
+    grid-template-columns: 20px minmax(0, 1fr) 32px 32px;
+  }
+  .wp-stable-shopping .wp-icon-button {
+    width: 32px;
+  }
+}
+
+/* Ingredients and cooking decisions share one workspace above the meal calendar. */
+.wp-planning-workbench {
+  display: grid;
+  grid-template-columns: minmax(260px, 0.85fr) minmax(0, 1.4fr);
+  gap: 18px;
+  margin-bottom: 26px;
+  align-items: start;
+}
+.wp-planning-workbench .wp-panel {
+  background: #f3f5ed;
+  padding: 18px;
+}
+.wp-cooking-workspace .wp-cooking-section {
+  margin: 0;
+  padding: 18px;
+  background: white;
+}
+.wp-cooking-workspace .wp-cooking-heading {
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.wp-cooking-workspace .wp-cooking-cards {
+  grid-template-columns: 1fr;
+}
+.wp-cooking-empty {
+  margin: 20px 0 8px;
+  color: #7c8474;
+  font-size: 13px;
+}
+.wp-ready-strip .wp-leftovers {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 12px 24px;
+}
+.wp-ready-strip .wp-leftover-row {
+  border: 0;
+}
+@media (max-width: 700px) {
+  .wp-planning-workbench {
+    grid-template-columns: 1fr;
+    margin-bottom: 20px;
+  }
+  .wp-ready-strip .wp-leftovers {
+    grid-template-columns: 1fr;
+  }
+}
+
+.wp-cooking-workspace {
+  display: grid;
+  gap: 14px;
+}
+.wp-cooking-workspace .wp-ready-strip .wp-panel {
+  background: #fff;
+}
+@media (max-width: 700px) {
+  .wp-week-intro {
+    display: none;
+  }
+}
+
+/* Shared food cards and quieter ingredient reminders. */
+.wp-cooking-workspace .wp-food-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  max-width: none;
+  min-height: 76px;
+  margin: 0;
+  padding: 12px;
+  border: 1px solid var(--wp-border);
+  border-radius: 9px;
+  background: #fff;
+  box-shadow: none;
+  text-align: left;
+}
+.wp-cooking-workspace .wp-food-card img,
+.wp-cooking-workspace .wp-food-card .wp-cooking-symbol,
+.wp-cooking-workspace .wp-food-card .wp-food-icon {
+  width: 46px;
+  height: 46px;
+  border-radius: 7px;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+.wp-cooking-workspace .wp-food-card strong {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  margin: 0;
+}
+.wp-cooking-workspace .wp-food-card .wp-food-meta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-top: 7px;
+  color: #74816c;
+  line-height: 1.3;
+}
+.wp-food-meta > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.wp-cooking-card.wp-food-card {
+  cursor: grab;
+  user-select: none;
+}
+.wp-cooking-card.wp-food-card > * {
+  pointer-events: none;
+}
+.wp-cooking-card.wp-food-card > span {
+  flex: 1;
+  min-width: 0;
+}
+.wp-cooking-workspace .wp-leftovers {
+  grid-template-columns: 1fr;
+}
+.wp-cooking-workspace .wp-panel-heading {
+  margin-bottom: 14px;
+}
+.wp-cooking-workspace .wp-cooking-heading {
+  margin-bottom: 14px;
+}
+#use-soon .wp-inline-add {
+  margin-top: 14px;
+  margin-bottom: 12px;
+}
+#use-soon .wp-use-soon-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin: 0;
+}
+#use-soon .wp-use-soon-list li:not(.wp-muted) {
+  display: inline-flex;
+  gap: 5px;
+  padding: 3px 5px 3px 10px;
+  border: 1px solid #dfe5d7;
+  border-radius: 20px;
+  background: #fff;
+  font-size: 12px;
+  min-height: 30px;
+}
+#use-soon .wp-use-soon-list li.wp-muted {
+  border: 0;
+  padding: 0;
+  font-size: 12px;
+}
+.wp-ingredient-remove {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  color: #818b79;
+  padding: 0;
+  border-radius: 50%;
+}
+.wp-ingredient-remove:hover {
+  background: #edf1e7;
+}
+#use-soon .wp-panel-heading > .wp-secondary {
+  min-height: 32px;
+  padding: 5px 9px;
+  font-size: 11px;
+}
+.wp-cook-ingredients {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: #667b58;
+  margin: 0 0 14px;
+}
+.wp-day-heading .wp-agenda-cook {
+  display: flex;
+  flex: 0 0 100%;
+  min-width: 0;
+  max-width: 100%;
+  text-align: left;
+}
+.wp-agenda-cook svg {
+  flex-shrink: 0;
+}
+.wp-agenda-cook > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+@media (max-width: 700px) {
+  .wp-day:not(:has(.wp-slot:nth-of-type(3))):has(.wp-agenda-cook) .wp-day-heading {
+    grid-column: 1/-1;
+    flex-direction: row;
+    align-items: center;
+    gap: 6px;
+  }
+  .wp-day:not(:has(.wp-slot:nth-of-type(3))):has(.wp-agenda-cook) .wp-slot {
+    grid-row: 2;
+  }
+  .wp-day:not(:has(.wp-slot:nth-of-type(3))):has(.wp-agenda-cook) .wp-slot:nth-of-type(1) {
+    grid-column: 2;
+  }
+  .wp-day:not(:has(.wp-slot:nth-of-type(3))):has(.wp-agenda-cook) .wp-slot:nth-of-type(2) {
+    grid-column: 3;
+  }
+  .wp-day-heading .wp-agenda-cook {
+    flex: 1 1 160px;
+    width: 0;
+  }
+}
+.wp-day-heading {
+  align-content: flex-start;
+}
+.wp-day-heading .wp-agenda-cook {
+  overflow: hidden;
+  box-sizing: border-box;
+}
+.wp-agenda-cook > span {
+  min-width: 0;
+  flex: 1;
+}
+.wp-agenda-navigation {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+.wp-agenda-navigation select {
+  border: 1px solid var(--wp-border);
+  border-radius: 7px;
+  background: white;
+  padding: 9px;
+  color: #526049;
+  font: inherit;
+  font-size: 12px;
+}
+.wp-week-title > span {
+  font-size: 15px;
+  color: #526049;
+}
+@media (min-width: 701px) {
+  .wp-week {
+    grid-template-columns: repeat(var(--agenda-columns, 7), minmax(0, 1fr));
+  }
+}
+@media (max-width: 700px) {
+  .wp-week-toolbar {
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+  .wp-week-title > span {
+    font-size: 12px;
+  }
+  .wp-agenda-navigation {
+    gap: 6px;
+  }
+}
+
+/* A compact row of planning inputs, followed immediately by the agenda. */
+@media (min-width: 1050px) {
+  .wp-planning-workbench {
+    grid-template-columns: minmax(220px, 0.85fr) minmax(0, 1.25fr) minmax(0, 1.15fr);
+    gap: 16px;
+    margin-bottom: 22px;
+  }
+  .wp-cooking-workspace {
+    display: contents;
+  }
+}
+.wp-day.wp-cook-drop {
+  outline: 2px solid #aa8555;
+  outline-offset: 2px;
+  background: #f5efe5;
+}
+.wp-agenda-cook {
+  cursor: grab;
+  user-select: none;
+}
+.wp-agenda-cook > * {
+  pointer-events: none;
+}
+@media (min-width: 701px) {
+  .wp-day {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .wp-day-heading {
+    min-width: 0;
+  }
+}
+.wp-meal-card {
+  position: relative;
+  min-width: 0;
+}
+.wp-meal-card > .wp-meal {
+  width: 100%;
+}
+.wp-board-remove {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 1px solid #e4e7df;
+  border-radius: 6px;
+  background: #ffffffed;
+  color: #78836d;
+  opacity: 0;
+}
+.wp-meal-card:hover .wp-board-remove,
+.wp-meal-card:has(:focus-visible) .wp-board-remove {
+  opacity: 1;
+}
+@media (hover: none) {
+  .wp-board-remove {
+    opacity: 1;
+  }
+}
+@media (min-width: 850px) {
+  .wp-cooking-dialog {
+    width: min(980px, calc(100vw - 48px));
+    max-width: 980px;
+  }
+  .wp-cooking-dialog > form {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    column-gap: 18px;
+  }
+  .wp-cooking-dialog > form > header,
+  .wp-cooking-dialog > form > footer,
+  .wp-cooking-dialog > form > .wp-alert {
+    grid-column: 1 / -1;
+  }
+}
+.wp-ready-strip .wp-empty-panel {
+  padding: 8px 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  text-align: left;
+}
+.wp-ready-strip .wp-empty-panel p {
+  margin: 0;
+}
+@media (max-width: 700px) {
+  .wp-cooking-dialog form > header {
+    margin-bottom: 14px;
+  }
+  .wp-cooking-dialog .wp-flow-section {
+    margin-bottom: 12px;
+    padding: 12px;
+  }
+  .wp-cooking-dialog .wp-flow-section > h3 {
+    margin: -12px -12px 12px;
+    padding: 8px 12px;
+  }
+  .wp-cooking-dialog .wp-day-picker {
+    margin: 10px 0;
+  }
+  .wp-cooking-dialog .wp-cook-details {
+    margin-top: 8px;
+  }
+  .wp-cooking-dialog .wp-field {
+    margin-bottom: 10px;
+  }
+}
+@media (min-width: 850px) {
+  .wp-cooking-dialog .wp-week-picker > div:has(button:nth-of-type(3)) {
+    grid-template-columns: 34px 22px repeat(3, minmax(0, 1fr));
+  }
+}
+.wp-preparation-toggle {
+  display: none;
+}
+.wp-flow-section > h3 > small {
+  margin-left: auto;
+  font-size: 11px;
+  font-weight: 400;
+  color: #74816c;
+}
+#eat-step {
+  scroll-margin-top: 12px;
+}
+@media (max-width: 700px) {
+  .wp-preparation-toggle {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    padding: 12px 14px;
+    margin-bottom: 16px;
+    border: 1px solid #dce3d5;
+    border-radius: 9px;
+    background: #f1f4ec;
+    color: #425b37;
+    font: inherit;
+    font-size: 13px;
+    font-weight: 600;
+    text-align: left;
+  }
+  .wp-preparation-toggle > svg:last-child {
+    margin-left: auto;
+  }
+  .wp-planning-workbench.wp-preparation-collapsed {
+    display: none;
+  }
+}
+.wp-cooking-workspace .wp-food-content {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 1;
+  min-width: 0;
+  width: auto;
+  max-width: none;
+  border: 0;
+  padding: 0;
+  margin: 0;
+  background: transparent;
+  box-shadow: none;
+  text-align: left;
+  cursor: grab;
+}
+.wp-food-content > span {
+  flex: 1;
+  min-width: 0;
+}
+.wp-food-content > * {
+  pointer-events: none;
+}
+.wp-food-actions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  flex-shrink: 0;
+}
+.wp-cooking-workspace .wp-food-card.wp-fully-planned {
+  background: #f3f4f0;
+  border-color: #e4e7df;
+}
+.wp-fully-planned img {
+  filter: saturate(0.8);
+  opacity: 0.85;
+}
+.wp-fully-planned strong {
+  color: #5b6555;
+}
+.wp-fully-planned .wp-food-content,
+.wp-fully-planned .wp-leftover-name {
+  cursor: pointer;
+}
+.wp-day.wp-invalid-drop,
+.wp-slot.wp-invalid-slot {
+  opacity: 0.38;
+  filter: grayscale(1);
+  background: repeating-linear-gradient(135deg, #ebece7, #ebece7 8px, #f3f4f0 8px, #f3f4f0 16px);
+}
+.wp-invalid-drop,
+.wp-invalid-drop *,
+.wp-invalid-slot,
+.wp-invalid-slot * {
+  cursor: not-allowed !important;
+}
+
+/* Cooking details stay compact; meal placement belongs in the agenda. */
+.wp-cooking-dialog {
+  width: min(560px, calc(100vw - 32px));
+}
+.wp-cooking-dialog > form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.wp-cooking-dialog .wp-flow-section {
+  margin: 0;
+  border: 0;
+  padding: 0;
+  background: transparent;
+}
+.wp-cooking-dialog .wp-cook-warning {
+  margin: 0;
+}
+
+.wp-preparation-toggle > span {
+  flex: 1;
+  text-align: left;
+}
+.wp-preparation-toggle small {
+  display: block;
+  font-size: 12px;
+  font-weight: 400;
+  margin-top: 3px;
+  color: #626d5e;
+}
+
+/* One scale for text entry and standard actions across pages. */
+.weekly-app {
+  --wp-input-size: 14px;
+  --wp-control-height: 44px;
+}
+.wp-search,
+.wp-inline-add input {
+  font-size: var(--wp-input-size);
+  min-height: var(--wp-control-height);
+  padding: 10px 12px;
+}
+.wp-search {
+  border-radius: 7px;
+}
+.wp-recipe-actions {
+  flex-wrap: wrap;
+}
+.wp-recipe-actions .wp-secondary {
+  min-height: 42px;
+  font-size: 12px;
+}
+.wp-recipe {
+  display: flex;
+  flex-direction: column;
+}
+.wp-recipe-actions {
+  margin-top: auto;
+  gap: 6px;
+}
+.wp-recipe-actions > button {
+  padding-inline: 9px;
+}
+
+/* Supporting text uses a shared readable size without competing with dish names. */
+.wp-cooking-workspace .wp-food-card .wp-food-meta {
+  font-size: 12px;
+  gap: 6px 10px;
+}
+.wp-day-heading .wp-agenda-cook {
+  font-size: 12px;
+}
+.wp-agenda-cook > span {
+  white-space: normal;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  text-align: left;
+  line-height: 1.35;
+}
+
+.wp-slot > p,
+.wp-recipe-title > span,
+.wp-recipe > p,
+.wp-day-buttons button span {
+  font-size: 12px;
+  color: #626d5e;
+}
+@media (max-width: 700px) {
+  .wp-recipe-art {
+    height: 100px;
+  }
+  .wp-recipe-title {
+    padding-top: 14px;
+  }
+  .wp-recipe-title h2 {
+    font-size: 18px;
+  }
+  .wp-recipe > p:not(.wp-match) {
+    display: none;
+  }
+  .wp-recipe-actions {
+    padding-top: 12px;
+  }
+  .wp-recipe-grid {
+    gap: 14px;
+  }
+  .wp-day-buttons button span {
+    font-size: 11px;
+  }
+  .wp-day-buttons button strong {
+    font-size: 14px;
+  }
+}
+
+/* Cooking is a compact preparation card, separate from meal slots. */
+.wp-day-heading .wp-agenda-cook {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 5px;
+  padding: 9px;
+  border: 1px solid #e5d8c3;
+  border-left: 3px solid #b28a54;
+  border-radius: 7px;
+  background: #faf3e8;
+  color: #645039;
+  transition:
+    background 0.15s,
+    border-color 0.15s;
+}
+.wp-agenda-cook > .wp-agenda-cook-label {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  overflow: visible;
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1.3;
+  color: #806541;
+}
+.wp-day-heading .wp-agenda-cook-name {
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  overflow: hidden;
+}
+.wp-day-heading .wp-agenda-cook:hover {
+  background: #f3e7d5;
+  border-color: #b28a54;
+}
+.wp-day-heading .wp-agenda-cook:focus-visible {
+  outline: 2px solid #8d6c3f;
+  outline-offset: 2px;
+}
+.wp-day-heading .wp-agenda-cook:active {
+  cursor: grabbing;
+}
+@media (max-width: 700px) {
+  .wp-day-heading .wp-agenda-cook {
+    padding: 7px 9px;
+    gap: 3px;
+  }
+}
+
+.wp-page-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.wp-ingredient-input {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+}
+.wp-ingredient-input > input {
+  width: 100%;
+  min-height: 44px;
+  padding: 10px 12px;
+  background: white;
+  border: 1px solid #d9e0d0;
+  border-radius: 7px;
+  font-size: 14px;
+}
+.wp-inline-add .wp-ingredient-input > input {
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+#use-soon .wp-inline-add {
+  overflow: visible;
+}
+.wp-ingredient-options {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  z-index: 10;
+  border: 1px solid #d9e0d0;
+  border-radius: 7px;
+  background: white;
+  box-shadow: 0 8px 20px #283e3320;
+  max-height: 230px;
+  overflow-y: auto;
+}
+.wp-ingredient-options button {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 10px 12px;
+}
+.wp-ingredient-options button:hover,
+.wp-ingredient-options button[aria-selected='true'] {
+  background: #eef3e8;
+}
+.wp-ingredient-options small,
+.wp-library-list small {
+  display: block;
+  color: #626d5e;
+  font-size: 12px;
+}
+.wp-ingredient-new {
+  display: block;
+  font-size: 11px;
+  color: #626d5e;
+  padding: 4px;
+}
+.wp-recipe-ingredients .wp-panel-heading {
+  margin: 18px 0 8px;
+}
+.wp-library-dialog {
+  width: min(560px, calc(100vw - 24px));
+}
+.wp-library-list {
+  max-height: 45vh;
+  overflow-y: auto;
+}
+.wp-library-list button {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 12px;
+  text-align: left;
+  border-bottom: 1px solid #e4e7df;
+  gap: 12px;
+}
+.wp-library-list button:hover {
+  background: #eef3e8;
+}
+@media (max-width: 700px) {
+  .wp-ingredient-input > input {
+    font-size: 16px;
+  }
+}
+.wp-shopping-panel .wp-inline-add {
+  overflow: visible;
+}
+.wp-dialog {
+  --wp-input-size: 14px;
+  --wp-control-height: 44px;
+}
+
+/* Recipe authoring: a compact recipe sheet, with one editable line per ingredient. */
+.wp-recipe-dialog {
+  width: min(600px, calc(100vw - 32px));
+}
+.wp-recipe-dialog .wp-recipe-title {
+  font-size: 22px;
+  font-family: var(--font-display);
+  padding: 12px 0;
+  border: 0;
+  border-bottom: 1px solid #d9e0d0;
+  border-radius: 0;
+}
+.wp-recipe-dialog .wp-recipe-yield {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+}
+.wp-recipe-hint {
+  margin: 0 0 10px;
+  color: #697362;
+  font-size: 12px;
+}
+.wp-recipe-lines {
+  border-top: 1px solid #e4e7df;
+}
+.wp-recipe-lines:empty {
+  border: 0;
+}
+.wp-recipe-line {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  border-bottom: 1px solid #e4e7df;
+}
+.wp-recipe-line .wp-ingredient-input > input {
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  padding: 10px 4px;
+}
+.wp-recipe-line .wp-icon-button {
+  flex-shrink: 0;
+  color: #78816f;
+}
+.wp-add-ingredient {
+  margin-top: 10px;
+}
+.wp-recipe-dialog .wp-recipe-ingredients .wp-meal-details {
+  margin-top: 12px;
+}
+.wp-recipe-dialog textarea {
+  line-height: 1.6;
+}
+@media (max-width: 700px) {
+  .wp-recipe-dialog .wp-recipe-title {
+    font-size: 22px;
+  }
+  .wp-recipe-line .wp-ingredient-input > input {
+    font-size: 16px;
+  }
+}
+
+.wp-recipe-dialog .wp-recipe-section-label {
+  font-size: 15px;
+  font-weight: 700;
+  color: #283f32;
+}
+
+.wp-photo-current {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin: 10px 0 16px;
+}
+.wp-photo-current > img {
+  width: 96px;
+  height: 96px;
+  border-radius: 9px;
+  object-fit: cover;
+}
+.wp-photo-current > div {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+}
+.wp-photo-current small {
+  color: #697362;
+  font-size: 12px;
+}
+.wp-photo-choices {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin: 10px 0;
+}
+.wp-photo-choices button {
+  border: 2px solid transparent;
+  background: #f5f6f1;
+  border-radius: 8px;
+  padding: 3px;
+  color: #3f563a;
+  font-size: 12px;
+  overflow: hidden;
+}
+.wp-photo-choices button.selected {
+  border-color: #5e7c4d;
+}
+.wp-photo-choices img {
+  display: block;
+  width: 100%;
+  height: 70px;
+  object-fit: cover;
+  border-radius: 5px;
+}
+.wp-photo-choices span {
+  display: block;
+  padding: 5px 2px;
+}
+
+/* Shared compact food editor: image header, dish, portions, optional notes. */
+.wp-food-dialog {
+  width: min(560px, calc(100vw - 32px));
+}
+.wp-food-dialog > form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.wp-food-dialog .wp-field {
+  margin: 0;
+}
+.wp-food-dialog .wp-food-dialog-header {
+  position: relative;
+  border-radius: 10px;
+  background: #f6f5ef;
+  padding: 20px;
+  align-items: flex-start;
+  isolation: isolate;
+}
+.wp-food-dialog-art {
+  position: absolute;
+  inset: 0 0 0 auto;
+  width: 65%;
+  height: 100%;
+  object-fit: cover;
+  z-index: -2;
+}
+.wp-food-dialog-header::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+}
+.wp-food-dialog-heading {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+.wp-food-dialog-heading h2 {
+  max-width: 260px;
+}
+.wp-food-dialog-header > .wp-icon-button {
+  background: #fffffff0;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.wp-food-dialog-heading .wp-secondary {
+  min-height: 32px;
+  padding: 5px 10px;
+  font-size: 12px;
+}
+.wp-food-dialog .wp-flow-section {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.wp-food-dialog .wp-meal-details,
+.wp-food-dialog .wp-cook-details {
+  margin: 0;
+}
+.wp-food-dialog .wp-modal-help {
+  margin: 0;
+}
+
+.wp-food-dialog {
+  max-width: 560px;
+}
+.wp-food-dialog .wp-recipe-input {
+  margin: 0;
+}
+.wp-food-dialog .wp-field input[type='number'] {
+  width: 150px;
+}
+.wp-food-dialog > form > header {
+  margin-bottom: 0;
+}
+.wp-food-dialog > form > footer {
+  margin-top: 8px;
+  padding-top: 16px;
+}
+.wp-food-dialog .wp-flow-section {
+  margin-bottom: 0;
+}
+
+.wp-food-dialog .wp-food-dialog-header {
+  overflow: visible;
+  min-height: 154px;
+}
+.wp-food-dialog .wp-food-dialog-art,
+.wp-food-dialog-header::after {
+  border-radius: 10px;
+}
+.wp-food-dialog-header::after {
+  background: linear-gradient(90deg, #f6f5ef 10%, #f6f5eff2 48%, #f6f5ef20 100%);
+}
+.wp-food-dialog-heading {
+  flex: 1;
+  min-width: 0;
+  padding-right: 12px;
+  gap: 12px;
+}
+.wp-food-dialog .wp-food-dialog-heading h2 {
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  color: #60705b;
+  margin: 0;
+}
+.wp-food-dialog-heading .wp-recipe-input {
+  width: 100%;
+}
+.wp-food-dialog .wp-food-dialog-heading input {
+  width: 100%;
+  min-width: 0;
+  padding: 7px 0;
+  border: 0;
+  border-bottom: 1px solid #60705b30;
+  border-radius: 0;
+  background: transparent;
+  color: #283f32;
+  font: 24px var(--font-display);
+}
+.wp-food-dialog-heading input::placeholder {
+  color: #697362;
+}
+.wp-food-dialog-header .wp-header-image-edit {
+  position: absolute;
+  right: 16px;
+  bottom: 12px;
+  background: #fffffff0;
+  border-radius: 50%;
+  width: 36px;
+  height: 36px;
+}
+.wp-food-dialog-header .wp-recipe-options {
+  min-width: min(360px, calc(100vw - 110px));
+  z-index: 20;
+}
+.wp-food-dialog > form > footer > div {
+  margin-left: auto;
+}
+.wp-food-dialog .wp-food-dialog-heading h2 {
+  letter-spacing: normal;
+  line-height: 1.4;
+}
+.wp-food-dialog .wp-food-dialog-header {
+  z-index: 2;
+}
+
+/* The dish name remains a title, with an underline to indicate keyboard focus. */
+.wp-food-dialog .wp-food-dialog-heading input:focus-visible {
+  outline: none;
+  border-bottom-color: #557653;
+  box-shadow: 0 1px 0 #557653;
+}
+
+/* Shared section typography and quiet card metadata. */
+.wp-planning-workbench .wp-panel-heading h2,
+.wp-planning-workbench .wp-cooking-heading h2 {
+  font-family: inherit;
+  font-size: 16px;
+  font-weight: 650;
+  line-height: 1.4;
+  letter-spacing: normal;
+  margin: 0;
+  color: #283f32;
+}
+.wp-planning-workbench .wp-panel-heading,
+.wp-planning-workbench .wp-cooking-heading {
+  min-height: 42px;
+  margin: 0 0 14px;
+}
+.wp-planning-workbench #use-soon .wp-inline-add {
+  margin-top: 0;
+}
+.wp-planning-workbench .wp-cooking-empty {
+  margin: 0;
+  padding: 8px 0;
+}
+.wp-meal-portions {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  color: #626d5e;
+  margin-top: 6px;
+}
+.wp-portions-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.wp-recipe-open {
+  display: block;
+  width: 100%;
+  padding: 0 0 12px;
+  text-align: left;
+  border-radius: 11px 11px 0 0;
+  transition: background 150ms ease;
+}
+.wp-recipe {
+  transition: background 150ms ease;
+}
+.wp-recipe:hover {
+  background: #edf2e8;
+}
+.wp-recipe-open .wp-recipe-art {
+  position: relative;
+}
+.wp-recipe-open .wp-recipe-art::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: #42694e;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 150ms ease;
+}
+.wp-recipe:hover .wp-recipe-art::after {
+  opacity: 0.12;
+}
+.wp-recipe-open:active .wp-recipe-art::after {
+  opacity: 0.2;
+}
+.wp-recipe-open:focus-visible {
+  outline-offset: -3px;
+}
+.wp-recipe:has(.wp-recipe-open:active) {
+  background: #e2ebdb;
+}
+.wp-recipe-open .wp-recipe-title {
+  position: relative;
+  padding-right: 42px;
+}
+.wp-recipe-title > svg {
+  position: absolute;
+  right: 18px;
+  top: 24px;
+  color: #60705b;
+}
+.wp-recipe-open > p {
+  font-size: 12px;
+  line-height: 1.5;
+  color: #626d5e;
+  padding: 0 20px;
+  margin: 6px 0;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+}
+.wp-recipe-use-soon {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin: 0 0 20px;
+  padding: 12px 14px;
+  background: #f0f3eb;
+  border-radius: 9px;
+  font-size: 13px;
+}
+.wp-recipe-use-soon p {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin: 0;
+}
+.wp-recipe-use-soon p svg {
+  align-self: center;
+}
+.wp-recipe-use-soon .wp-check-row {
+  margin: 0;
+  font-size: 13px;
+}
+.wp-photo-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.wp-photo-heading h3 {
+  font-family: inherit;
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.4;
+  margin: 0;
+}
+.wp-photo-heading .wp-secondary {
+  font-size: 12px;
+}
+@media (max-width: 700px) {
+  .wp-recipe-open > p:not(.wp-match) {
+    display: none;
+  }
+}
+
+/* Keep actions reachable while editing long recipes on a phone. */
+@media (max-width: 700px) {
+  .wp-recipe-dialog > form > footer {
+    position: sticky;
+    bottom: -24px;
+    z-index: 4;
+    background: #fffffc;
+    padding: 12px 0 20px;
+    box-shadow: 0 -8px 16px #fffffcd9;
+  }
+  .wp-toast {
+    width: calc(100vw - 32px);
+    box-sizing: border-box;
+  }
+  .wp-toast > span {
+    flex: 1;
+    min-width: 0;
+  }
+  .wp-toast > svg,
+  .wp-toast > button {
+    flex-shrink: 0;
+  }
+}
+.wp-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+.wp-meal,
+.wp-agenda-cook,
+.wp-leftover-name,
+.wp-cooking-card {
+  -webkit-touch-callout: none;
+}
+
+.wp-topbar {
+  justify-content: flex-end;
+}
+@media (min-width: 701px) {
+  .wp-topbar {
+    height: 28px;
+    border-bottom: 0;
+    padding-top: 10px;
+  }
+}
+
+.wp-touch-hint {
+  display: none;
+}
+.wp-method-input {
+  overflow-y: hidden;
+  resize: none;
+  min-height: 100px;
+}
+@media (max-width: 700px) {
+  .wp-touch-hint {
+    display: block;
+    margin: 0 0 10px;
+    font-size: 12px;
+    color: #586750;
+  }
+  .wp-week-caption {
+    display: none;
+  }
+  .wp-planning-workbench {
+    gap: 8px;
+  }
+  .wp-planning-workbench .wp-panel,
+  .wp-cooking-workspace .wp-cooking-section {
+    padding: 12px;
+  }
+  .wp-cooking-workspace {
+    gap: 8px;
+  }
+  .wp-planning-workbench .wp-panel-heading,
+  .wp-planning-workbench .wp-cooking-heading {
+    min-height: 36px;
+    margin-bottom: 8px;
+  }
+  .wp-planning-workbench #use-soon {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: 8px 12px;
+    align-items: center;
+  }
+  .wp-planning-workbench #use-soon .wp-panel-heading {
+    margin: 0;
+  }
+  .wp-planning-workbench #use-soon .wp-inline-add {
+    margin: 0;
+  }
+  .wp-planning-workbench #use-soon .wp-use-soon-list {
+    grid-column: 1 / -1;
+  }
+  .wp-cooking-workspace .wp-food-card {
+    min-height: 60px;
+  }
+  .wp-cooking-workspace .wp-cooking-card,
+  .wp-cooking-workspace .wp-leftover-name {
+    padding: 8px;
+  }
+  .wp-cooking-workspace .wp-food-meta {
+    font-size: 12px;
+  }
+  .wp-meal-portions {
+    font-size: 12px;
+  }
+  .wp-day-heading > span {
+    font-size: 12px;
+  }
+  .wp-cooking-workspace .wp-cooking-empty,
+  .wp-ready-strip .wp-empty-panel {
+    display: none;
+  }
+  .wp-cooking-workspace .wp-cooking-section:has(.wp-cooking-empty) .wp-cooking-heading,
+  .wp-cooking-workspace #leftovers:has(.wp-empty-panel) .wp-panel-heading {
+    margin-bottom: 0;
+  }
+  .wp-sidebar nav button,
+  .wp-day .wp-empty-slot {
+    font-size: 12px;
+  }
+}
+
+.wp-search-help {
+  margin: -8px 0 16px;
+  font-size: 12px;
+  color: #596652;
+}
+.wp-week-caption p {
+  font-size: 12px;
+  color: #596652;
+}
+@media (max-width: 700px) {
+  .wp-recipe-open .wp-recipe-art {
+    height: 130px;
+  }
+  .wp-recipe-open .wp-recipe-art img {
+    height: 100%;
+  }
+}
+
+.wp-recipe-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0 0 16px;
+}
+.wp-filter-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 11px;
+  border: 1px solid #cbd8c2;
+  border-radius: 20px;
+  background: #edf2e8;
+  color: #365432;
+  font-size: 13px;
+}
+.wp-filter-chip:hover {
+  background: #dfead7;
+}
+
+.wp-recipe-search {
+  width: min(100%, 420px);
+  margin-bottom: 16px;
+}
+.wp-recipe-search .wp-ingredient-input input {
+  width: 100%;
+  min-height: 44px;
+  padding: 10px 12px;
+  background: white;
+  border: 1px solid #d9e0d0;
+  border-radius: 8px;
+}
+
+.wp-settings {
+  max-width: 740px;
+  display: grid;
+  gap: 24px;
+}
+.wp-settings > section {
+  background: white;
+  border: 1px solid var(--wp-line, #e4e7df);
+  border-radius: 16px;
+  padding: 24px;
+}
+.wp-settings h2 {
+  margin: 0 0 18px;
+  font-size: 18px;
+  font-weight: 600;
+  font-family: inherit;
+}
+.wp-settings p {
+  color: #697168;
+  font-size: 14px;
+  line-height: 1.5;
+}
+.wp-settings label,
+.wp-settings .wp-setting-number {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: center;
+  margin: 16px 0;
+}
+.wp-settings input:not([type='checkbox']),
+.wp-settings select {
+  min-width: 0;
+  border: 1px solid #dce1d7;
+  border-radius: 8px;
+  padding: 10px;
+  background: #fafbf8;
+  font: inherit;
+}
+.wp-settings label input {
+  width: 90px;
+}
+.wp-setting-section {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr) 36px 36px;
+  align-items: center;
+  gap: 8px;
+  margin: 10px 0;
+}
+.wp-setting-section input[type='checkbox'] {
+  accent-color: #52784c;
+  width: 18px;
+  height: 18px;
+}
+.wp-setting-section button {
+  display: grid;
+  place-items: center;
+  padding: 8px;
+  border: 0;
+  border-radius: 8px;
+  background: #f1f4ee;
+}
+@media (max-width: 700px) {
+  .wp-settings > section {
+    padding: 16px;
+  }
+  .wp-week.wp-custom-sections .wp-day {
+    display: flex;
+    flex-direction: column;
+  }
+  .wp-week.wp-custom-sections .wp-slot {
+    width: 100%;
+  }
+  .wp-week.wp-custom-sections .wp-slot > p {
+    display: block;
+  }
+}
+
+.wp-settings .wp-inline-add input {
+  border: 0;
+  background: transparent;
+}
+
+.wp-access {
+  max-width: 480px;
+  margin: 60px auto;
+  padding: 20px;
+  color: #294436;
+  font-family: var(--font-ui);
+}
+.wp-access-card {
+  background: white;
+  border: 1px solid #dfe5da;
+  border-radius: 18px;
+  padding: 28px;
+  margin-top: 24px;
+}
+.wp-access-card h1 {
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: 27px;
+  margin: 0 0 12px;
+}
+.wp-access-card p {
+  font-size: 14px;
+  line-height: 1.6;
+  color: #64725f;
+}
+.wp-access-card label,
+.wp-household-settings label {
+  display: grid;
+  gap: 8px;
+  margin: 20px 0;
+  font-size: 14px;
+}
+.wp-access-card input,
+.wp-household-settings input {
+  padding: 12px;
+  border: 1px solid #dce1d7;
+  border-radius: 8px;
+  min-width: 0;
+  font: inherit;
+  width: 100%;
+  box-sizing: border-box;
+}
+.wp-access-card form > .wp-primary {
+  width: 100%;
+  justify-content: center;
+  margin-top: 8px;
+}
+.wp-access-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin: 14px 0;
+}
+.wp-household-settings {
+  max-width: 740px;
+  background: white;
+  border: 1px solid #e4e7df;
+  border-radius: 16px;
+  padding: 24px;
+  margin-top: 24px;
+}
+.wp-household-settings h2 {
+  font: inherit;
+  font-size: 18px;
+  font-weight: 600;
+  margin: 0 0 14px;
+}
+.wp-members {
+  padding: 0;
+  list-style: none;
+}
+.wp-members li {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: center;
+  padding: 12px 0;
+  border-bottom: 1px solid #e4e7df;
+  flex-wrap: wrap;
+}
+.wp-members strong {
+  font-size: 14px;
+  overflow-wrap: anywhere;
+}
+.wp-members small {
+  display: block;
+  font-size: 12px;
+  color: #64725f;
+  margin-top: 4px;
+}
+.wp-signout {
+  display: block;
+  margin-top: 24px;
+}
+@media (max-width: 700px) {
+  .wp-access {
+    margin: 20px auto;
+  }
+  .wp-access-card,
+  .wp-household-settings {
+    padding: 20px;
+  }
+}
+
+.wp-household-settings .wp-inline-add input {
+  border: 0;
+  background: transparent;
+}
+
+.wp-toast {
+  overflow: hidden;
+}
+.wp-toast-countdown {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 3px;
+  background: #b5ce9f;
+  transform-origin: left;
+  pointer-events: none;
+}
+
+.wp-household-block {
+  padding: 22px 0;
+  border-top: 1px solid var(--wp-border);
+}
+.wp-household-block:last-child {
+  padding-bottom: 0;
+}
+.wp-household-block h3 {
+  margin: 0 0 12px;
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0;
+}
+.wp-household-block h3 > span {
+  margin-left: 6px;
+  color: var(--wp-muted);
+  font-weight: 400;
+}
+.wp-household-hint {
+  margin: 0 0 14px;
+  font-size: 13px;
+  color: var(--wp-muted);
+  overflow-wrap: anywhere;
+}
+.wp-household-block .wp-members {
+  margin: 0;
+}
+.wp-household-block .wp-members li {
+  flex-wrap: nowrap;
+  align-items: flex-start;
+}
+.wp-household-block .wp-members li:last-child {
+  border-bottom: 0;
+  padding-bottom: 0;
+}
+.wp-members li > div:first-child {
+  min-width: 0;
+  flex: 1;
+}
+.wp-member-manage {
+  flex-shrink: 0;
+  max-width: 45%;
+}
+.wp-member-manage > summary {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  margin-left: auto;
+  border-radius: 7px;
+  color: var(--wp-muted);
+  cursor: pointer;
+  list-style: none;
+}
+.wp-member-manage > summary::-webkit-details-marker {
+  display: none;
+}
+.wp-member-manage > summary:hover,
+.wp-member-manage[open] > summary {
+  background: #edf1e7;
+  color: var(--wp-ink);
+}
+.wp-member-actions {
+  display: grid;
+  gap: 6px;
+  margin-top: 8px;
+}
+.wp-member-actions .wp-secondary {
+  justify-content: flex-start;
+  font-size: 12px;
+  padding: 8px 10px;
+}
+.wp-household-block .wp-access-actions {
+  margin: 0;
+}
+.wp-household-account-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+.wp-household-account-actions .wp-signout {
+  display: inline-flex;
+  margin: 0;
+}
+.wp-household-account .wp-modal-help {
+  margin: 14px 0 0;
+  font-size: 12px;
+}
+
+/* A joined input has one focus ring around the complete control. */
+.wp-inline-add:focus-within,
+.wp-number-control:focus-within {
+  outline: 2px solid #658757;
+  outline-offset: 2px;
+}
+.wp-inline-add input:focus-visible,
+.wp-inline-add button:focus-visible,
+.wp-number-control input:focus-visible {
+  outline: none;
+  box-shadow: none;
+}
+.wp-number-control {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  max-width: 100%;
+  border: 1px solid #dce1d7;
+  border-radius: 8px;
+  background: #fff;
+}
+.wp-number-control button {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 42px;
+  flex-shrink: 0;
+  border-radius: 7px;
+  color: #42694e;
+}
+.wp-number-control button:hover:not(:disabled) {
+  background: #edf1e7;
+}
+.wp-number-control button:disabled {
+  opacity: 0.35;
+}
+.weekly-app .wp-number-control input,
+.wp-dialog .wp-number-control input,
+.wp-food-dialog .wp-field .wp-number-control input[type='number'] {
+  width: 44px;
+  min-width: 0;
+  margin: 0;
+  padding: 8px 2px;
+  height: 42px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  text-align: center;
+  appearance: textfield;
+  -moz-appearance: textfield;
+  font-size: 15px;
+}
+.wp-number-control input::-webkit-inner-spin-button,
+.wp-number-control input::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+.wp-member-manage {
+  position: relative;
+}
+.wp-member-actions {
+  position: absolute;
+  top: 36px;
+  right: 0;
+  z-index: 30;
+  width: 170px;
+  padding: 6px;
+  margin: 0;
+  background: white;
+  border: 1px solid #e4e7df;
+  border-radius: 10px;
+  box-shadow: 0 8px 24px #283e3320;
+}
+.wp-member-actions .wp-secondary {
+  border: 0;
+  width: 100%;
+}
+.wp-secondary.wp-danger {
+  color: #a13f34;
+  border-color: #e7c8c2;
+}
+.wp-secondary.wp-danger:hover {
+  background: #fff0ed;
+}
+.wp-invite-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+.wp-invite-heading h3 {
+  margin-bottom: 4px;
+}
+.wp-invite-heading .wp-household-hint {
+  margin: 0;
+}
+.wp-invite-heading > button {
+  flex-shrink: 0;
+}
+.wp-invite-list {
+  list-style: none;
+  padding: 0;
+  margin: 16px 0 0;
+}
+.wp-invite-list li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 0;
+  border-top: 1px solid #e4e7df;
+}
+.wp-invite-list li > div {
+  flex: 1;
+  min-width: 0;
+}
+.wp-invite-list small {
+  display: block;
+  color: var(--wp-muted);
+  font-size: 12px;
+}
+.wp-invite-url {
+  display: block;
+  margin-top: 4px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--wp-muted);
+  font-size: 12px;
+  user-select: all;
+}
+@media (max-width: 450px) {
+  .wp-invite-heading {
+    align-items: flex-start;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+}
+.wp-members .wp-member-identity {
+  flex: 1;
+  min-width: 0;
+}
+.wp-members .wp-member-identity strong {
+  display: block;
+  text-wrap: balance;
+}
+.wp-members .wp-account-avatar {
+  margin-top: 3px;
+}
+.wp-icon-button.wp-danger {
+  color: #a13f34;
+}
+
+/* Sign-in: the mascot welcomes users above a separate, compact form. */
+:root:has(.wp-welcome),
+body:has(.wp-welcome) {
+  background: #fafaf6;
+}
+.wp-welcome {
+  max-width: 408px;
+  margin: clamp(24px, 7vh, 72px) auto;
+}
+.wp-welcome > .wp-brand {
+  font-size: 25px;
+  gap: 7px;
+}
+.wp-welcome .wp-brand-logo {
+  width: 112px;
+  height: 133px;
+}
+.wp-welcome .wp-access-card {
+  margin-top: 26px;
+}
+.wp-welcome .wp-access-card h1 {
+  font-size: 29px;
+}
+
+.wp-welcome .wp-access-card form > .wp-primary {
+  font-size: 14px;
+  min-height: 44px;
+}
+
+.wp-welcome .wp-access-card {
+  box-shadow:
+    0 12px 36px #3847310a,
+    0 2px 6px #38473104;
+}
+.wp-access-input {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  border: 1px solid #dce1d7;
+  border-radius: 8px;
+  background: #fdfefb;
+  padding-left: 13px;
+  color: #60755f;
+}
+.wp-access-input svg {
+  flex-shrink: 0;
+}
+.wp-access-input:focus-within {
+  outline: 2px solid #6b8b5a;
+  outline-offset: 2px;
+}
+.wp-welcome .wp-access-input input {
+  color: #294436;
+  border: 0;
+  background: transparent;
+  padding-left: 0;
+  outline: none;
+  box-shadow: none;
+}
+body:has(.wp-welcome) {
+  display: flow-root;
+  min-height: 100dvh;
+}
+.wp-welcome {
+  position: relative;
+  z-index: 1;
+}
+.wp-welcome-decoration {
+  position: fixed;
+  pointer-events: none;
+  background-image: url('/images/brand/sign-in-garden.png');
+  background-repeat: no-repeat;
+  mix-blend-mode: multiply;
+}
+.wp-welcome-herbs {
+  top: 0;
+  left: 0;
+  width: clamp(110px, 20vw, 280px);
+  aspect-ratio: 280 / 330;
+  background-size: 548.57% auto;
+  background-position: left top;
+  mask-image:
+    linear-gradient(to right, black 85%, transparent),
+    linear-gradient(to bottom, black 85%, transparent);
+  mask-composite: intersect;
+}
+.wp-welcome-board {
+  right: 0;
+  bottom: 0;
+  width: clamp(140px, 26vw, 370px);
+  aspect-ratio: 400 / 500;
+  background-size: 384% auto;
+  background-position: right bottom;
+  mask-image:
+    linear-gradient(to left, black 85%, transparent),
+    linear-gradient(to top, black 85%, transparent);
+  mask-composite: intersect;
+}
+@media (max-width: 700px) {
+  .wp-welcome-herbs {
+    width: 68px;
+    opacity: 0.6;
+  }
+  .wp-welcome-board {
+    width: 115px;
+    opacity: 0.5;
+  }
+}
+@media (max-height: 700px) and (max-width: 700px) {
+  .wp-welcome-board {
+    display: none;
+  }
+}
+
+.wp-welcome .wp-access-card > .wp-primary,
+.wp-welcome .wp-access-card > .wp-secondary {
+  width: 100%;
+  justify-content: center;
+  margin-top: 24px;
+  min-height: 44px;
+  font-size: 14px;
+}
+.wp-welcome .wp-access-card h1,
+.wp-welcome .wp-access-card p {
+  overflow-wrap: anywhere;
+}
+.wp-welcome-secondary {
+  border-top: 1px solid #e4e7df;
+  margin-top: 24px;
+  padding-top: 20px;
+}
+.wp-welcome-secondary .wp-welcome-account {
+  font-size: 12px;
+  margin: 16px 0 8px;
+}
+
+.wp-settings .wp-section-toggle {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  margin: 0;
+  cursor: pointer;
+}
+.wp-shopping-heading {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.wp-shopping-heading > .wp-secondary {
+  margin-top: 0;
+  flex-shrink: 0;
+}
+
+.wp-access-actions .wp-resend-code {
+  width: 170px;
+  flex: 0 0 170px;
+  font-variant-numeric: tabular-nums;
+}
+.wp-recipe-yield .wp-recipe-plan {
+  margin-left: auto;
+}
+.wp-recipe-yield {
+  flex-wrap: wrap;
+}
+.wp-clear-filters {
+  margin-left: 12px;
+  text-decoration: underline;
+  color: var(--wp-green);
+  padding: 6px;
+}
+.wp-day .wp-slot > p:has(button),
+.wp-day:not(:has(.wp-slot:nth-of-type(3))) .wp-slot > p:has(button) {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 28px;
+  margin-bottom: 5px;
+}
+.wp-slot > p .wp-icon-button {
+  min-width: 32px;
+  min-height: 28px;
+  height: 28px;
+  padding: 4px;
+}
+@media (min-width: 701px) {
+  .wp-day .wp-slot > p {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    min-height: 28px;
+    margin-bottom: 5px;
+  }
+}
+@media (max-width: 700px) {
+  .wp-day:has(.wp-meal-card) .wp-slot > p,
+  .wp-day:not(:has(.wp-slot:nth-of-type(3))):has(.wp-meal-card) .wp-slot > p {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    min-height: 28px;
+    margin-bottom: 5px;
+  }
+  .wp-day:has(.wp-meal-card) .wp-slot {
+    align-self: start;
+  }
+}
+.wp-dialog footer:has(> .wp-secondary) {
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.wp-recipe-dialog .wp-recipe-yield {
+  gap: 8px;
+}
+.wp-recipe-yield .wp-number-control button {
+  width: 32px;
+}
+.wp-shopping-heading {
+  min-height: 44px;
+}

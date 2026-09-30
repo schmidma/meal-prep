@@ -10,6 +10,7 @@ const executablePath =
 
 export default defineConfig({
   testDir: './tests',
+  testMatch: '**/*.spec.ts',
   fullyParallel: true,
   workers: 2,
   reporter: 'list',
@@ -23,7 +24,6 @@ export default defineConfig({
     { name: 'desktop', use: { viewport: { width: 1440, height: 1000 } } },
     {
       name: 'phone',
-      testIgnore: 'persistence.spec.ts',
       use: { viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true }
     }
   ],
@@ -31,6 +31,10 @@ export default defineConfig({
     command: 'npm run dev -- --host 127.0.0.1 --port 4173 --strictPort',
     url: 'http://127.0.0.1:4173',
     reuseExistingServer: false,
-    env: { MEAL_PREP_DB_PATH: join(tmpdir(), `meal-prep-e2e-${randomUUID()}`, 'plan.sqlite') }
+    env: {
+      BETTER_AUTH_URL: 'http://127.0.0.1:4173',
+      MAIL_DELIVERY: 'test',
+      MEAL_PREP_DB_PATH: join(tmpdir(), `meal-prep-e2e-${randomUUID()}`, 'plan.sqlite')
+    }
   }
 });

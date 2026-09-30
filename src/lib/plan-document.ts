@@ -1,3 +1,5 @@
+import { validateSettings, type PlanningSettings } from './planning-settings';
+import { isPhotoId } from './food-photos';
 import { addMinutes, parseDay } from './calendar';
 import { MAX_ACTIVITY_MINUTES } from './domain';
 import type { KitchenPlan } from './kitchen';
@@ -114,7 +116,170 @@ export function migrateV1KitchenPlan(input: unknown): KitchenPlan {
 
 export function parseKitchenPlan(input: unknown): KitchenPlan {
   checkSize(input);
-  const plan = object(input, [...legacyPlanKeys, 'recipes', 'activityRequirements']);
+  const hasWeekly = input !== null && typeof input === 'object' && Object.hasOwn(input, 'weekly');
+  const plan = object(input, [
+    ...legacyPlanKeys,
+    'recipes',
+    'activityRequirements',
+    ...(hasWeekly ? ['weekly'] : [])
+  ]);
+  const libraryIds = new Set<string>();
+  if (hasWeekly) {
+    const optional = [
+      'settings',
+      'mealSections',
+      'sessions',
+      'mealSources',
+      'leftoverSources',
+      'images',
+      'useSoon',
+      'ingredientLibrary'
+    ].filter(
+      (key) => plan.weekly && typeof plan.weekly === 'object' && Object.hasOwn(plan.weekly, key)
+    );
+    const weekly = object(plan.weekly, ['shopping', 'styles', ...optional]);
+    if (weekly.settings !== undefined) {
+      const settings = object(weekly.settings, ['startDay', 'daysShown', 'portions', 'sections']);
+      if (settings.startDay !== 'today') integer(settings.startDay, 0, 6);
+      integer(settings.daysShown, 1, Number.MAX_SAFE_INTEGER);
+      quantity(settings.portions);
+      for (const entry of list(settings.sections)) {
+        const section = object(entry, ['id', 'name', 'enabled']);
+        id(section.id);
+        text(section.name, true);
+        if (typeof section.enabled !== 'boolean') invalid();
+      }
+      validateSettings(settings as unknown as PlanningSettings);
+    }
+    if (weekly.mealSections !== undefined) {
+      if (
+        !weekly.mealSections ||
+        typeof weekly.mealSections !== 'object' ||
+        Array.isArray(weekly.mealSections)
+      )
+        invalid();
+      const sections = (weekly.settings as unknown as PlanningSettings | undefined)?.sections;
+      for (const [key, value] of Object.entries(weekly.mealSections)) {
+        id(key);
+        id(value);
+        if (
+          !sections?.some((section) => section.id === value) &&
+          !['Breakfast', 'Lunch', 'Dinner'].includes(value as string)
+        )
+          invalid();
+      }
+    }
+    if (weekly.ingredientLibrary !== undefined) {
+      const ids = new Set<string>();
+      const names = new Set<string>();
+      for (const entry of list(weekly.ingredientLibrary)) {
+        const item = object(entry, ['id', 'name', 'aliases']);
+        const key = id(item.id);
+        if (ids.has(key)) invalid();
+        ids.add(key);
+        libraryIds.add(key);
+        for (const value of [item.name, ...list(item.aliases)]) {
+          const name = text(value, true)
+            .normalize('NFKC')
+            .trim()
+            .toLocaleLowerCase()
+            .replace(/\s+/g, ' ');
+          if (names.has(name)) invalid();
+          names.add(name);
+        }
+      }
+    }
+    if (weekly.useSoon !== undefined) {
+      const seen = new Set<string>();
+      for (const value of list(weekly.useSoon)) {
+        const item = object(value, [
+          'id',
+          'name',
+          ...(Object.hasOwn(value as object, 'ingredientId') ? ['ingredientId'] : [])
+        ]);
+        if (item.ingredientId !== undefined && !libraryIds.has(id(item.ingredientId))) invalid();
+        const key = id(item.id);
+        if (seen.has(key)) invalid();
+        seen.add(key);
+        text(item.name, true);
+      }
+    }
+    const sessionIds = new Set<string>();
+    if (weekly.sessions !== undefined)
+      for (const value of list(weekly.sessions)) {
+        const session = object(value, ['id', 'name', 'day', 'quantity', 'notes', 'recipeId']);
+        const key = id(session.id);
+        if (sessionIds.has(key)) invalid();
+        sessionIds.add(key);
+        text(session.name, true);
+        day(session.day);
+        quantity(session.quantity);
+        text(session.notes);
+        text(session.recipeId);
+      }
+    if (weekly.images !== undefined) {
+      if (!weekly.images || typeof weekly.images !== 'object' || Array.isArray(weekly.images))
+        invalid();
+      for (const [key, value] of Object.entries(weekly.images)) {
+        id(key);
+        if (!isPhotoId(value)) invalid();
+      }
+    }
+    if (weekly.mealSources !== undefined) {
+      if (
+        !weekly.mealSources ||
+        typeof weekly.mealSources !== 'object' ||
+        Array.isArray(weekly.mealSources)
+      )
+        invalid();
+      for (const [key, value] of Object.entries(weekly.mealSources)) {
+        id(key);
+        const link = object(value, ['sessionId', 'portions']);
+        if (!sessionIds.has(id(link.sessionId))) invalid();
+        quantity(link.portions);
+      }
+    }
+    if (weekly.leftoverSources !== undefined) {
+      if (
+        !weekly.leftoverSources ||
+        typeof weekly.leftoverSources !== 'object' ||
+        Array.isArray(weekly.leftoverSources)
+      )
+        invalid();
+      for (const [key, value] of Object.entries(weekly.leftoverSources)) {
+        id(key);
+        const link = object(value, ['batchId', 'portions']);
+        id(link.batchId);
+        quantity(link.portions);
+      }
+    }
+    const shoppingIds = new Set<string>();
+    for (const entry of list(weekly.shopping)) {
+      const hasCook = entry !== null && typeof entry === 'object' && Object.hasOwn(entry, 'cookId');
+      const hasIngredient =
+        entry !== null && typeof entry === 'object' && Object.hasOwn(entry, 'ingredientId');
+      const item = object(entry, [
+        'id',
+        'name',
+        'checked',
+        ...(hasCook ? ['cookId'] : []),
+        ...(hasIngredient ? ['ingredientId'] : [])
+      ]);
+      if (hasIngredient && !libraryIds.has(id(item.ingredientId))) invalid();
+      if (hasCook && !sessionIds.has(id(item.cookId))) invalid();
+      const key = id(item.id);
+      if (shoppingIds.has(key)) invalid();
+      shoppingIds.add(key);
+      text(item.name, true);
+      if (typeof item.checked !== 'boolean') invalid();
+    }
+    if (!weekly.styles || typeof weekly.styles !== 'object' || Array.isArray(weekly.styles))
+      invalid();
+    for (const [key, value] of Object.entries(weekly.styles)) {
+      id(key);
+      choice(value, ['cook', 'leftovers', 'easy']);
+    }
+  }
   const ids = new Set<string>();
   const activityIds = new Set<string>();
   const batchIds = new Set<string>();
@@ -147,7 +312,10 @@ export function parseKitchenPlan(input: unknown): KitchenPlan {
     text(activity.notes);
   }
   for (const item of list(plan.batches)) {
-    const batch = object(item, ['id', 'name', 'quantity', 'unit', 'source']);
+    const optional =
+      item && typeof item === 'object' && Object.hasOwn(item, 'recipeId') ? ['recipeId'] : [];
+    const batch = object(item, ['id', 'name', 'quantity', 'unit', 'source', ...optional]);
+    if (batch.recipeId !== undefined) id(batch.recipeId);
     register(batch.id, batchIds);
     text(batch.name, true);
     quantity(batch.quantity);
@@ -208,7 +376,14 @@ export function parseKitchenPlan(input: unknown): KitchenPlan {
     integer(recipe.durationMinutes, 0, MAX_ACTIVITY_MINUTES);
     text(recipe.instructions);
     for (const entry of list(recipe.ingredients)) {
-      const ingredient = object(entry, ['id', 'name', 'quantity']);
+      const optional = ['ingredientId', 'unit', 'preparation'].filter(
+        (key) => entry !== null && typeof entry === 'object' && Object.hasOwn(entry, key)
+      );
+      const ingredient = object(entry, ['id', 'name', 'quantity', ...optional]);
+      if (ingredient.ingredientId !== undefined && !libraryIds.has(id(ingredient.ingredientId)))
+        invalid();
+      if (ingredient.unit !== undefined) text(ingredient.unit);
+      if (ingredient.preparation !== undefined) text(ingredient.preparation);
       register(ingredient.id, new Set());
       text(ingredient.name, true);
       quantity(ingredient.quantity);

@@ -1,2 +1,2 @@
-// This first prototype is intentionally browser-local, with no server-side plan state.
+// The planner loads its shared household document through the versioned API.
 export const ssr = false;

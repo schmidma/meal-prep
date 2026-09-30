@@ -1,3 +1,4 @@
+import { mergePlans } from './plan-merge';
 import type { KitchenPlan } from './kitchen';
 import {
   PLAN_SCHEMA_VERSION,
@@ -24,7 +25,8 @@ export type PlanTransport = {
   save(request: SaveRequest, signal: AbortSignal): Promise<PlanDocument>;
 };
 type Draft = {
-  draftVersion: 2;
+  draftVersion: 3;
+  base: KitchenPlan | null;
   baseRevision: number;
   latest: KitchenPlan;
   attempted: SaveRequest | null;
@@ -38,8 +40,11 @@ function parseDraft(raw: string): Draft {
   if (
     !value ||
     typeof value !== 'object' ||
-    Object.keys(value).sort().join(',') !== 'attempted,baseRevision,draftVersion,latest' ||
-    (value.draftVersion !== 1 && value.draftVersion !== 2) ||
+    Object.keys(value).sort().join(',') !==
+      (value.draftVersion === 3
+        ? 'attempted,base,baseRevision,draftVersion,latest'
+        : 'attempted,baseRevision,draftVersion,latest') ||
+    ![1, 2, 3].includes(value.draftVersion) ||
     !Number.isSafeInteger(value.baseRevision) ||
     value.baseRevision < 0
   )
@@ -54,12 +59,19 @@ function parseDraft(raw: string): Draft {
         : parseSaveRequest(value.attempted);
   if (attempted && attempted.revision !== value.baseRevision)
     throw new Error('Invalid recovery revision');
-  return { draftVersion: 2, baseRevision: value.baseRevision, latest, attempted };
+  return {
+    draftVersion: 3,
+    base: value.draftVersion === 3 && value.base !== null ? parseKitchenPlan(value.base) : null,
+    baseRevision: value.baseRevision,
+    latest,
+    attempted
+  };
 }
 
 /** Acknowledgements advance the saved baseline, never the live editor. */
 export class PlanSync {
   private document?: PlanDocument;
+  private baseKnown = true;
   private latest?: KitchenPlan;
   private attempted: SaveRequest | null = null;
   private phase: SyncPhase = 'loading';
@@ -77,6 +89,7 @@ export class PlanSync {
       drafts: DraftStorage;
       onState(state: SyncState): void;
       onHydrate(plan: KitchenPlan): void;
+      canRefresh?(): boolean;
     }
   ) {}
 
@@ -103,7 +116,8 @@ export class PlanSync {
         this.rawDraft = null;
       } else {
         this.rawDraft = JSON.stringify({
-          draftVersion: 2,
+          draftVersion: 3,
+          base: this.baseKnown ? this.document.plan : null,
           baseRevision: this.document.revision,
           latest: this.latest,
           attempted: this.attempted
@@ -158,6 +172,7 @@ export class PlanSync {
           }
         }
         this.document = copy(document);
+        this.baseKnown = true;
         this.latest = copy(draft?.latest ?? document.plan);
         this.attempted = null;
         this.conflicted = false;
@@ -172,9 +187,20 @@ export class PlanSync {
             (draft.attempted && !unresolved && same(document.plan, draft.attempted.plan))
           ) {
             /* safe continuation */
-          } else this.conflicted = true;
+          } else {
+            const merged = draft.base && mergePlans(draft.base, draft.latest, document.plan);
+            if (merged) this.latest = copy(merged);
+            else this.conflicted = true;
+          }
           // A conflict's draft must retain its old base, not quietly rebase on a new GET.
-          if (this.conflicted) this.document = { ...document, revision: draft.baseRevision };
+          if (this.conflicted) {
+            this.baseKnown = draft.base !== null;
+            this.document = {
+              ...document,
+              revision: draft.baseRevision,
+              plan: draft.base ?? document.plan
+            };
+          }
         }
         this.loaded = true;
         this.phase = this.conflicted
@@ -204,6 +230,27 @@ export class PlanSync {
     this.publish();
     if (this.phase === 'saving') void this.pump();
   }
+  /** Refresh only a clean baseline; failed writes retain their exact retry payload. */
+  refresh(): Promise<void> {
+    if (this.disposed || this.busy || !this.loaded || this.state.dirty || this.phase !== 'saved')
+      return this.busy ?? Promise.resolve();
+    return this.run(async () => {
+      this.active = new AbortController();
+      try {
+        const remote = parsePlanDocument(await this.options.transport.load(this.active.signal));
+        if (this.disposed || !this.document || remote.revision <= this.document.revision) return;
+        // Edits can arrive while the GET is in flight. Let their save resolve the race.
+        if (this.state.dirty || this.options.canRefresh?.() === false) return;
+        this.document = copy(remote);
+        this.latest = copy(remote.plan);
+        this.options.onHydrate(copy(remote.plan));
+        this.persist();
+        this.publish();
+      } catch {
+        /* A background check must not interrupt editing while offline. */
+      }
+    });
+  }
   retry(): Promise<void> {
     if (!this.loaded) return this.start();
     if (this.conflicted || this.disposed) return Promise.resolve();
@@ -222,6 +269,7 @@ export class PlanSync {
     if (this.busy || this.disposed || !this.loaded || this.conflicted)
       return this.busy ?? Promise.resolve();
     return this.run(async () => {
+      let rebases = 0;
       while (!this.disposed && this.latest && this.document && !this.conflicted) {
         if (!this.attempted && same(this.latest, this.document.plan)) {
           this.phase = 'saved';
@@ -247,11 +295,48 @@ export class PlanSync {
           if (saved.revision < attempt.revision || !same(saved.plan, attempt.plan))
             throw new Error('Invalid save acknowledgement');
           this.document = copy(saved);
+          this.baseKnown = true;
           this.attempted = null;
           this.persist();
         } catch (error) {
           if (this.disposed) return;
           if (error instanceof SaveConflict) {
+            if (rebases < 3) {
+              try {
+                const remote = parsePlanDocument(
+                  await this.options.transport.load(this.active.signal)
+                );
+                if (this.disposed) return;
+                // An editor may have opened while the save or GET was in flight.
+                // Retain its baseline until it closes rather than silently rebasing its draft.
+                if (this.options.canRefresh?.() === false) {
+                  this.phase = 'error';
+                  this.persist();
+                  this.publish();
+                  return;
+                }
+                const merged =
+                  remote.revision > this.document.revision
+                    ? mergePlans(this.document.plan, this.latest, remote.plan)
+                    : null;
+                if (merged) {
+                  this.document = copy(remote);
+                  this.latest = copy(merged);
+                  this.attempted = null;
+                  rebases++;
+                  this.options.onHydrate(copy(merged));
+                  this.persist();
+                  continue;
+                }
+              } catch {
+                if (this.disposed) return;
+                // Keep the exact attempted write for retry if the newer copy is unreachable.
+                this.phase = 'error';
+                this.persist();
+                this.publish();
+                return;
+              }
+            }
             this.conflicted = true;
             this.attempted = null;
             this.phase = 'conflict';
@@ -284,7 +369,10 @@ export class PlanSync {
   }
 }
 
-export function httpPlanTransport(fetcher: typeof fetch = fetch): PlanTransport {
+export function httpPlanTransport(
+  fetcher: typeof fetch = fetch,
+  endpoint = '/api/plan'
+): PlanTransport {
   async function request(method: 'GET' | 'PUT', signal: AbortSignal, value?: SaveRequest) {
     const controller = new AbortController();
     const abort = () => controller.abort();
@@ -292,7 +380,7 @@ export function httpPlanTransport(fetcher: typeof fetch = fetch): PlanTransport 
     if (signal.aborted) controller.abort();
     const timer = setTimeout(abort, 10_000);
     try {
-      const response = await fetcher('/api/plan', {
+      const response = await fetcher(endpoint, {
         method,
         cache: 'no-store',
         signal: controller.signal,

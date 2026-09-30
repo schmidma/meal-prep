@@ -1,17 +1,20 @@
+import { createKitchenPlan } from '../../../tests/fixtures/legacy-plan';
 import { afterEach, describe, expect, it } from 'vitest';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
-import {
-  createKitchenPlan,
-  setIngredientUse,
-  validateKitchenPlan,
-  type KitchenPlan
-} from '../kitchen';
+import type { KitchenPlan, Recipe } from '../kitchen';
 import { DATABASE_SCHEMA_VERSION, PlanConflictError, PlanStore } from './plan-store';
 import { parsePlanDocument } from '../plan-document';
-import { createRecipe, instantiateRecipe } from '../recipes';
+const createRecipe = (id: string, name: string): Recipe => ({
+  id,
+  name,
+  yieldQuantity: 4,
+  durationMinutes: 30,
+  ingredients: [],
+  instructions: ''
+});
 
 const dirs: string[] = [];
 const stores: PlanStore[] = [];
@@ -49,12 +52,13 @@ describe('PlanStore', () => {
     const first = open();
     const initial = first.load();
     expect(first.load()).toEqual(initial);
-    const plan = setIngredientUse(
-      structuredClone(initial.plan),
-      'ing-paprika',
-      initial.plan.activities[0].id,
-      9
-    );
+    const plan = structuredClone(initial.plan);
+    plan.ingredientUses.push({
+      id: 'use',
+      ingredientId: 'ing-paprika',
+      activityId: plan.activities[0].id,
+      quantity: 9
+    });
     plan.availability['2027-01-04'] = {
       label: 'Far away',
       cookable: [{ start: 20, end: 60 }],
@@ -84,25 +88,13 @@ describe('PlanStore', () => {
     });
     const recipe = createRecipe('recipe', 'Soup');
     recipe.ingredients.push({ id: 'recipe-ingredient', name: 'Carrots', quantity: 3 });
-    const instance = instantiateRecipe(
-      recipe,
-      {
-        activityId: 'recipe-cook',
-        batchId: 'recipe-output',
-        start: { day: '2027-01-04', minute: 1000 },
-        title: 'Soup tonight',
-        durationMinutes: 40,
-        yieldQuantity: 6
-      },
-      () => 'requirement'
-    );
     plan.recipes.push(recipe);
-    plan.activities.push(instance.activity);
-    plan.batches.push(instance.batch);
-    plan.activityRequirements.push(...instance.requirements);
-    expect(
-      validateKitchenPlan(plan).some((warning) => warning.code.includes('OVER_ALLOCATED'))
-    ).toBe(true);
+    plan.activityRequirements.push({
+      id: 'requirement',
+      activityId: plan.activities[0].id,
+      name: 'Carrots',
+      quantity: 3
+    });
     const saved = first.save(initial.revision, plan);
     expect(saved.revision).toBe(initial.revision + 1);
     first.close();
@@ -238,4 +230,11 @@ describe('PlanStore', () => {
     repair.close();
     expect(() => open().load()).toThrow();
   });
+});
+
+it('starts a household empty when no test seed is supplied', () => {
+  const { path } = fixture();
+  const store = new PlanStore(path);
+  stores.push(store);
+  expect(store.load().plan).toEqual(empty());
 });

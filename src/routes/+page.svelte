@@ -1,1745 +1,2185 @@
 <script lang="ts">
-  import { onDestroy, onMount, tick } from 'svelte';
-  import { parseKitchenPlan } from '$lib/plan-document';
+  import { useI18n } from '$lib/i18n/context.svelte';
+  const i18n = useI18n();
+  import ShoppingList from '$lib/components/ShoppingList.svelte';
+  import NumberInput from '$lib/components/NumberInput.svelte';
+  import { confirmAction, askChoice } from '$lib/confirmation';
+  import { setAccountContext, accountFetch } from '$lib/household-client';
+  import { goto } from '$app/navigation';
+  import type { Account } from '$lib/account';
+  import HouseholdSettings from '$lib/components/HouseholdSettings.svelte';
+  import SignOut from '$lib/components/SignOut.svelte';
+  import { onMount, tick } from 'svelte';
+  import { touchDrag } from '$lib/touch-drag';
+  import { autoGrow } from '$lib/auto-grow';
+  import { addDays, parseDay, startOfWeek, todayDay } from '$lib/calendar';
   import { PlanSync, httpPlanTransport, type SyncState } from '$lib/plan-sync';
-  import { addDays, addMinutes, formatTime, parseDay, startOfWeek, todayDay } from '$lib/calendar';
-  import {
-    batchTotals,
-    batchReadyAt,
-    removeBatch,
-    MAX_ACTIVITY_MINUTES,
-    type Activity,
-    type Batch,
-    type LocalTime
-  } from '$lib/domain';
   import {
     deleteActivity,
-    deleteBlocker,
-    deleteIngredient,
-    ingredientTotals,
-    moveBlocker,
-    parseIngredient,
-    parsePreparedFood,
-    validateKitchenPlan,
     type KitchenPlan,
+    type MealStyle,
     type Recipe,
-    type RecipeIngredient,
-    type ActivityRequirement,
-    type Blocker
+    type CookingSession
   } from '$lib/kitchen';
-  import { createRecipe, instantiateRecipe } from '$lib/recipes';
+  import type { Activity, Batch } from '$lib/domain';
   import {
-    addBatchAssignment,
-    addIngredientAssignment,
-    patchIngredientUseAmount,
-    patchAllocationAmount,
-    entityRef,
-    kitchenFocus,
-    rangeForTarget,
-    warningTargets,
-    type EntityRef,
-    type RelationSelection
-  } from '$lib/relationships';
-  import { pointerDrag, type DragPoint } from '$lib/drag';
+    emptyKitchen,
+    extras,
+    mealSlot,
+    mealStyle,
+    minuteForSlot,
+    type MealSlot
+  } from '$lib/planner';
+  import { parseKitchenPlan } from '$lib/plan-document';
+  import { newId } from '$lib/id';
+  import PlanningSettingsPanel from '$lib/components/PlanningSettings.svelte';
   import {
-    absoluteMinute,
-    endpointSegmentDay,
-    PX_PER_MINUTE,
-    resizeSpan,
-    snapMinute,
-    type ResizeEdge
-  } from '$lib/time-layout';
-  import { dateLabel, newId, quantity } from '$lib/view';
+    planningSettings,
+    planningStart,
+    visibleSections,
+    validateSettings,
+    type PlanningSettings
+  } from '$lib/planning-settings';
+  import CookingEditor from '$lib/components/CookingEditor.svelte';
+  import RecipeInput from '$lib/components/RecipeInput.svelte';
+  import { recipeMatches } from '$lib/use-soon';
+  import { servingSlots, removeCooking } from '$lib/cooking';
+  import { photoUrl } from '$lib/food-photos';
+  import PhotoPicker from '$lib/components/PhotoPicker.svelte';
+  import FoodDialogHeader from '$lib/components/FoodDialogHeader.svelte';
+  import IngredientInput from '$lib/components/IngredientInput.svelte';
+  import RecipeIngredients from '$lib/components/RecipeIngredients.svelte';
+  import IngredientLibrary from '$lib/components/IngredientLibrary.svelte';
+  import {
+    linkIngredients,
+    ingredientLine,
+    recipeIngredientSearch,
+    recipeHasIngredients,
+    findIngredient,
+    ingredientKey,
+    parseRecipeIngredientLine
+  } from '$lib/ingredient-library';
   import Icon from '$lib/components/Icon.svelte';
-  import ThemeToggle from '$lib/components/ThemeToggle.svelte';
-  import FoodTray from '$lib/components/FoodTray.svelte';
-  import Timeline, { type DragPreview } from '$lib/components/Timeline.svelte';
-  import Agenda from '$lib/components/Agenda.svelte';
-  import QuickCreate, { type QuickKind } from '$lib/components/QuickCreate.svelte';
-  import ActivityPopover from '$lib/components/ActivityPopover.svelte';
-  import FoodPopover from '$lib/components/FoodPopover.svelte';
-  import BlockPopover from '$lib/components/BlockPopover.svelte';
-  import RecipesPopover from '$lib/components/RecipesPopover.svelte';
-  import IssuesPopover from '$lib/components/IssuesPopover.svelte';
-  import { setInspector, type InspectorDestination } from '$lib/inspector';
-  import { type CheckAction, type ChecksSession } from '$lib/plan-checks';
+  import '$lib/styles/planner.css';
 
-  const anchorDay = startOfWeek(todayDay());
-  let plan = $state<KitchenPlan>({
-    activities: [],
-    batches: [],
-    allocations: [],
-    availability: {},
-    ingredients: [],
-    ingredientUses: [],
-    blockers: [],
-    recipes: [],
-    activityRequirements: []
-  });
-  let sync: PlanSync | undefined;
+  let account = $state<Account | null>(null);
+  let accountError = $state('');
+  const storageScope = () =>
+    account ? `${account.user.id}:${account.household!.id}` : 'uninitialized';
+  let cooking = $state<{
+    session?: CookingSession;
+    recipe?: Recipe;
+    day?: string;
+    firstMeal?: MealSlot;
+  } | null>(null);
+  let photo = $state('');
+  let sourceId = $state('');
+  let leftoverId = $state('');
+  let sourcePortions = $state(2);
+  let plan = $state<KitchenPlan>(emptyKitchen());
+  const preferredPortions = $derived(planningSettings(plan).portions);
   let persistence = $state<SyncState>({
     phase: 'loading',
     loaded: false,
     dirty: false,
     recoveryUnavailable: false
   });
-  const saveProblem = $derived(
-    persistence.phase === 'error'
-      ? persistence.loaded
-        ? 'Could not save. Your edits are still in this tab. Retry when the server is available.'
-        : 'Could not load your saved plan. Nothing on the server has been changed.'
-      : persistence.phase === 'conflict'
-        ? 'Another tab or device changed the plan. Your local edits have not overwritten it.'
-        : persistence.phase === 'recovery-error'
-          ? 'This tab has a recovery copy that cannot be read. Download it before loading the saved plan.'
-          : persistence.recoveryUnavailable
-            ? 'Browser recovery storage is unavailable. Wait for Saved before closing or refreshing this tab.'
-            : ''
-  );
-  onMount(() => {
-    let savedView: string | null = null;
+  let sync: PlanSync;
+  let week = $state(startOfWeek(todayDay()));
+  let visibleDays = $state(7);
+  let preparationExpanded = $state(false);
+  let tab = $state<'week' | 'recipes' | 'shopping' | 'settings'>('week');
+  async function navigateSection(next: typeof tab) {
+    if (tab === next) return;
+    tab = next;
     try {
-      savedView = localStorage.getItem('meal-prep:view');
-    } catch {
-      /* Browsing works without storage. */
-    }
-    view =
-      savedView === 'calendar' || savedView === 'agenda'
-        ? savedView
-        : window.innerWidth < 700
-          ? 'agenda'
-          : 'calendar';
-    const key = 'meal-prep:unsaved-plan:v1';
-    sync = new PlanSync({
-      transport: httpPlanTransport(),
-      drafts: {
-        read: () => sessionStorage.getItem(key),
-        write: (value) => sessionStorage.setItem(key, value),
-        remove: () => sessionStorage.removeItem(key)
-      },
-      onState: (state) => {
-        persistence = state;
-      },
-      onHydrate: (saved) => {
-        plan = saved;
-        history = [];
-        inspection = null;
-        cancelPlacement();
-        void tick().then(() => {
-          if (window.innerWidth < 700) activeView()?.revealDay(todayDay());
-        });
-        selectedId = null;
-        hoveredId = null;
-        lastActivityId = null;
-      }
+      sessionStorage.setItem(`meal-prep:page:${storageScope()}`, next);
+    } catch {}
+    await tick();
+    window.scrollTo(0, 0);
+  }
+  let modal = $state<'meal' | 'meal-choice' | 'recipe' | 'leftover' | null>(null);
+  let dialog = $state<HTMLDialogElement>();
+  let editing = $state('');
+  let title = $state('');
+  let date = $state(todayDay());
+  let slot = $state<MealSlot>('Dinner');
+  let style = $state<MealStyle>('cook');
+  let notes = $state('');
+  let portions = $state(2);
+  let libraryOpen = $state(false);
+  let photoBusy = $state(false);
+  let photoOpen = $state(false);
+  let leftoverRecipeId = $state('');
+  const boundRecipe = $derived(
+    plan.recipes.find(
+      (r) =>
+        r.id ===
+        (modal === 'leftover'
+          ? leftoverRecipeId
+          : modal === 'meal'
+            ? (sessions.find((s) => s.id === sourceId)?.recipeId ??
+              plan.batches.find((b) => b.id === leftoverId)?.recipeId)
+            : undefined)
+    )
+  );
+  const dialogPhoto = $derived(boundRecipe ? (plan.weekly?.images?.[boundRecipe.id] ?? '') : photo);
+  let recipePaste = $state('');
+  let recipeIngredients = $state<Recipe['ingredients']>([]);
+  let mealIngredients = $state<Recipe['ingredients']>([]);
+  let shopWithMeal = $state(false);
+  let initialDraft = '';
+  const draftKey = () =>
+    JSON.stringify({
+      title,
+      date,
+      slot,
+      style,
+      notes,
+      portions,
+      recipeIngredients,
+      recipePaste,
+      leftoverRecipeId,
+      shopWithMeal,
+      photo,
+      sourceId,
+      leftoverId,
+      sourcePortions
     });
-    void sync.start();
+  let shopText = $state('');
+  let editingShop = $state('');
+  let editedShopText = $state('');
+  let search = $state('');
+  let recipeFilters = $state<string[]>([]);
+  function addRecipeFilter(value = search) {
+    const name = value.trim();
+    if (!name) return;
+    const label = findIngredient(plan.weekly?.ingredientLibrary ?? [], name)?.name ?? name;
+    if (!recipeFilters.some((item) => ingredientKey(item) === ingredientKey(label)))
+      recipeFilters = [...recipeFilters, label];
+    search = '';
+  }
+  let useSoonText = $state('');
+  let filterUseSoon = $state(false);
+  const useSoon = $derived(extras(plan).useSoon ?? []);
+  $effect(() => {
+    if (!useSoon.length) filterUseSoon = false;
+  });
+  let notice = $state('');
+  let noticeIsWarning = $state(false);
+  let noticeVersion = $state(0);
+  let noticeHovered = $state(false);
+  let noticeFocused = $state(false);
+  let noticeRemaining = $state(6000);
+  $effect(() => {
+    noticeVersion;
+    notice;
+    noticeRemaining = 6000;
+  });
+  $effect(() => {
+    if (!notice || noticeHovered || noticeFocused) return;
+    let previous = performance.now();
+    const timer = setInterval(() => {
+      const now = performance.now();
+      noticeRemaining = Math.max(0, noticeRemaining - (now - previous));
+      previous = now;
+      if (!noticeRemaining) notice = '';
+    }, 50);
+    return () => clearInterval(timer);
+  });
+  let error = $state('');
+  let undoPlan = $state<KitchenPlan | null>(null);
+  let dragged = $state('');
+  let dropDay = $state('');
+  let opener: HTMLElement | null = null;
+  let renderedDays = $state(28);
+  const settings = $derived(planningSettings(plan));
+  const days = $derived(
+    Array.from({ length: Math.min(visibleDays, renderedDays) }, (_, i) => addDays(week, i))
+  );
+  const sections = $derived(visibleSections(plan, days));
+  const weeklyMeals = $derived(
+    plan.activities.filter((a) => a.kind !== 'other' && days.includes(a.start.day))
+  );
+  const sessions = $derived(plan.weekly?.sessions ?? []);
+  const weekSessions = $derived(
+    sessions
+      .filter(
+        (s) =>
+          days.includes(s.day) || servingSlots(plan, s.id).some((slot) => days.includes(slot.day))
+      )
+      .sort((a, b) => a.day.localeCompare(b.day))
+  );
+  const remaining = (id: string) =>
+    (sessions.find((s) => s.id === id)?.quantity ?? 0) -
+    servingSlots(plan, id).reduce((n, s) => n + s.portions, 0);
+  const sourceSessions = $derived(
+    sessions.filter(
+      (s) =>
+        s.id === sourceId ||
+        (s.day >= addDays(date || week, -7) && s.day <= (date || week) && remaining(s.id) > 0)
+    )
+  );
+  const shopping = $derived(extras(plan).shopping);
+  const leftoverRemaining = (id: string) =>
+    Math.max(
+      0,
+      (plan.batches.find((b) => b.id === id)?.quantity ?? 0) -
+        Object.entries(extras(plan).leftoverSources ?? {})
+          .filter(
+            ([mealId, link]) => link.batchId === id && plan.activities.some((a) => a.id === mealId)
+          )
+          .reduce((sum, [, link]) => sum + link.portions, 0)
+    );
+  function chooseLeftover(batch: Batch) {
+    newMeal(date, slot, batch.name, 'leftovers', '', [], plan.weekly?.images?.[batch.id] ?? '');
+    leftoverId = batch.id;
+    sourcePortions = Math.min(preferredPortions, leftoverRemaining(batch.id));
+    initialDraft = draftKey();
+  }
+  const leftovers = $derived(plan.batches.filter((b) => b.source.kind === 'existing'));
+  const preparationSummary = $derived.by(() => {
+    const parts = [];
+    if (useSoon.length) parts.push(i18n.t('planner.ingredientCount', { count: useSoon.length }));
+    if (weekSessions.length)
+      parts.push(i18n.t('planner.cookCount', { count: weekSessions.length }));
+    if (visibleLeftovers.length)
+      parts.push(i18n.t('planner.leftoverCount', { count: visibleLeftovers.length }));
+    const available =
+      visibleLeftovers.reduce((n, b) => n + leftoverRemaining(b.id), 0) +
+      weekSessions.reduce((n, s) => n + Math.max(0, remaining(s.id)), 0);
+    if (weekSessions.length || visibleLeftovers.length)
+      parts.push(
+        available > 0
+          ? i18n.t('planner.portionsToPlan', { count: available })
+          : i18n.t('planner.allPlanned')
+      );
+    return parts.join(' · ') || i18n.t('planner.ingredientsCookingPlansAndLeftovers');
+  });
+  const visibleLeftovers = $derived(
+    leftovers.filter(
+      (b) =>
+        leftoverRemaining(b.id) > 0 ||
+        Object.entries(extras(plan).leftoverSources ?? {}).some(
+          ([id, link]) => link.batchId === b.id && weeklyMeals.some((a) => a.id === id)
+        )
+    )
+  );
+  const recipes = $derived(
+    plan.recipes
+      .filter(
+        (r) =>
+          recipeIngredientSearch(r, plan.weekly?.ingredientLibrary ?? [], search) &&
+          recipeHasIngredients(r, plan.weekly?.ingredientLibrary ?? [], recipeFilters) &&
+          (!filterUseSoon || recipeMatches(r, useSoon).length > 0)
+      )
+      .sort((a, b) =>
+        filterUseSoon ? recipeMatches(b, useSoon).length - recipeMatches(a, useSoon).length : 0
+      )
+  );
+  const icons = { cook: 'bowl', leftovers: 'leaf', easy: 'sun' } as const;
+  const loaded = $derived(persistence.loaded && persistence.phase !== 'loading');
+  const dateLabel = (day: string, options: Intl.DateTimeFormatOptions) =>
+    parseDay(day).toLocaleDateString(i18n.tag, options);
+  const uid = () => newId('weekly');
+  const clone = (p: KitchenPlan): KitchenPlan => JSON.parse(JSON.stringify(p));
+
+  $effect(() => {
+    if (loaded) {
+      try {
+        sessionStorage.setItem(`meal-prep:last-week:${storageScope()}`, week);
+      } catch {
+        /* Optional navigation memory. */
+      }
+    }
+  });
+
+  onMount(() => {
+    let disposed = false;
+    const canRefresh = () =>
+      document.visibilityState === 'visible' &&
+      !document.querySelector('dialog[open]') &&
+      !document.activeElement?.matches('input, textarea, select, [contenteditable="true"]') &&
+      !dragged;
+    const refreshShared = () => {
+      if (!canRefresh()) return;
+      if (persistence.phase === 'error' && navigator.onLine) void sync?.retry();
+      else void sync?.refresh();
+    };
+    const reconnect = refreshShared;
+    const sharedTimer = setInterval(refreshShared, 5000);
+    window.addEventListener('focus', refreshShared);
+    window.addEventListener('online', reconnect);
+    document.addEventListener('visibilitychange', refreshShared);
+    void initialize();
+    async function initialize() {
+      try {
+        const response = await fetch('/api/account');
+        if (disposed) return;
+        if (response.status === 401) {
+          await goto('/sign-in', { replaceState: true });
+          return;
+        }
+        if (!response.ok) throw new Error(i18n.t('planner.unableToLoadYourAccount'));
+        const value: Account = await response.json();
+        if (disposed) return;
+        if (!value.household) {
+          await goto('/household', { replaceState: true });
+          return;
+        }
+        account = value;
+        await i18n.loadAccount(value);
+        setAccountContext(value);
+        try {
+          const savedTab = sessionStorage.getItem(`meal-prep:page:${storageScope()}`);
+          if (
+            savedTab === 'week' ||
+            savedTab === 'recipes' ||
+            savedTab === 'shopping' ||
+            savedTab === 'settings'
+          )
+            tab = savedTab;
+        } catch {}
+        document.documentElement.removeAttribute('data-theme');
+        try {
+          const savedWeek = sessionStorage.getItem(`meal-prep:last-week:${storageScope()}`);
+          if (savedWeek) {
+            parseDay(savedWeek);
+            week = savedWeek;
+          }
+        } catch {
+          /* A blocked browser store should not prevent planning. */
+        }
+        const key = `meal-prep:unsaved-plan:v1:${storageScope()}`;
+        sync = new PlanSync({
+          transport: httpPlanTransport(accountFetch(value)),
+          canRefresh,
+          drafts: {
+            read: () => sessionStorage.getItem(key),
+            write: (value) => sessionStorage.setItem(key, value),
+            remove: () => sessionStorage.removeItem(key)
+          },
+          onState: (value) => (persistence = value),
+          onHydrate: (value) => {
+            plan = linkIngredients(value);
+            visibleDays = planningSettings(plan).daysShown;
+            let restored = false;
+            try {
+              restored = !!sessionStorage.getItem(`meal-prep:last-week:${storageScope()}`);
+            } catch {}
+            if (!restored) {
+              week = planningStart(todayDay(), planningSettings(plan));
+              visibleDays = planningSettings(plan).daysShown;
+            }
+            if (JSON.stringify(plan) !== JSON.stringify(value)) sync.change(plan);
+            undoPlan = null;
+          }
+        });
+        void sync.start();
+      } catch {
+        accountError = i18n.t('planner.unableToLoadYourAccountPleaseReload');
+      }
+    }
     return () => {
+      disposed = true;
+      clearInterval(sharedTimer);
+      window.removeEventListener('focus', refreshShared);
+      window.removeEventListener('online', reconnect);
+      document.removeEventListener('visibilitychange', refreshShared);
       sync?.dispose();
     };
   });
-  let startDay = $state(anchorDay);
-  let dayCount = $state(7);
-  let selectedId = $state<string | null>(null);
-  let hoveredId = $state<string | null>(null);
-  let lastActivityId = $state<string | null>(null);
-  let view = $state<'calendar' | 'agenda'>('calendar');
-  let history = $state<KitchenPlan[]>([]);
-  let assignment = $state<{
-    kind: 'ingredient' | 'batch';
-    id: string;
-    amount: number;
-    name: string;
-  } | null>(null);
-  let mode = $state<'activity' | 'meal'>('activity');
-  let mealSourceId = $state<string | null>(null);
-  type Inspection =
-    | {
-        key: string;
-        kind: 'activity' | 'block' | 'ingredient' | 'batch';
-        id: string;
-        reveal?: CheckAction['reveal'];
-        anchor?: HTMLElement | null;
-      }
-    | {
-        key: string;
-        kind: 'recipes';
-        anchor?: HTMLElement | null;
-      }
-    | {
-        key: string;
-        kind: 'issues';
-        anchor?: HTMLElement | null;
-      }
-    | {
-        key: string;
-        kind: 'quick';
-        start: LocalTime;
-        initialKind: QuickKind;
-        draftKind: QuickKind;
-        draftTitle: string;
-        suppliedDuration: number;
-        durationProvided: boolean;
-        editableStart: boolean;
-        previewDuration: number;
-        previewValid: boolean;
-        anchor?: HTMLElement | null;
-      };
-  let inspection = $state<Inspection | null>(null);
-  let recipeSelectedId = $state<string | null>(null);
-  let recipeNewName = $state('');
-  let inspectorExpanded = $state(false);
-  let ingredientDrafts = $state<Record<string, string>>({});
-  let checksSession = $state<ChecksSession>({
-    scrollTop: 0,
-    focusKey: null,
-    originKey: null,
-    originTitle: '',
-    originGroupKey: null,
-    originRowTitle: null,
-    originAt: null,
-    returning: false,
-    filter: 'all',
-    orderedFocusKeys: [],
-    focusOffset: null,
-    expandedKeys: []
-  });
-  setInspector({
-    get destination() {
-      return inspection?.kind === 'recipes'
-        ? 'recipes'
-        : inspection?.kind === 'issues' || checksSession.originKey
-          ? 'issues'
-          : null;
-    },
-    get checkCount() {
-      return warnings.length;
-    },
-    get backToChecks() {
-      return (
-        !!checksSession.originKey && inspection?.kind !== 'issues' && inspection?.kind !== 'recipes'
-      );
-    },
-    get expanded() {
-      return inspectorExpanded;
-    },
-    get ingredientDrafts() {
-      return ingredientDrafts;
-    },
-    setIngredientDraft: (key, text) => {
-      ingredientDrafts[key] = text;
-    },
-    setExpanded: (value) => {
-      inspectorExpanded = value;
-    },
-    switchTo: (destination) => switchInspector(destination),
-    back: () => {
-      checksSession.returning = true;
-      openIssues();
-    }
-  });
-  $effect(() => {
-    if (!inspection) {
-      clearChecksContext();
-      inspectorExpanded = false;
-      recipeSelectedId = null;
-    }
-  });
-  function clearChecksContext() {
-    checksSession.originKey = null;
-    checksSession.originTitle = '';
-    checksSession.originGroupKey = null;
-    checksSession.originRowTitle = null;
-    checksSession.originAt = null;
-    checksSession.returning = false;
-  }
-  function switchInspector(destination: InspectorDestination) {
-    if (destination === 'recipes') openRecipes();
-    else openIssues();
-  }
-  function navigateCheck(
-    target: CheckAction,
-    originKey: string,
-    title: string,
-    groupKey: string | null,
-    rowTitle: string | null
-  ) {
-    checksSession.originKey = originKey;
-    checksSession.originTitle = title;
-    checksSession.originGroupKey = groupKey;
-    checksSession.originRowTitle = rowTitle;
-    checksSession.originAt = rowTitle ? (target.at ?? null) : null;
-    void navigateEntity(target.entity, target.at, target.reveal);
-  }
-  let relationPreview = $state.raw<{
-    owner: string;
-    token: object;
-    selection: RelationSelection;
-    label: string;
-  } | null>(null);
-  const activeRelation = $derived(
-    relationPreview?.owner === inspection?.key ? relationPreview : null
-  );
-  const focusId = $derived(assignment?.id ?? mealSourceId ?? selectedId ?? hoveredId);
-  const focus = $derived(kitchenFocus(plan, entityRef(plan, focusId), activeRelation?.selection));
-  const related = $derived(focus.entityIds);
-  const focusLabel = $derived(
-    activeRelation?.label ??
-      (focusId
-        ? `Direct food relationships for ${plan.activities.find((item) => item.id === focusId)?.title ?? plan.batches.find((item) => item.id === focusId)?.name ?? plan.ingredients.find((item) => item.id === focusId)?.name ?? 'this item'}`
-        : 'Drag cards to move. Drag either edge to resize.')
-  );
-  function previewRelation(
-    owner: string,
-    token: object,
-    selection: RelationSelection | null,
-    label: string
-  ) {
-    if (inspection?.key !== owner) return;
-    if (selection) relationPreview = { owner, token, selection, label };
-    else if (relationPreview?.token === token) relationPreview = null;
-  }
-  function relationHandler(owner: string) {
-    return (token: object, selection: RelationSelection | null, label: string) =>
-      previewRelation(owner, token, selection, label);
-  }
-  function keyboardPreview(id: string | null, nextTarget?: EventTarget | null) {
-    if (id === null && retainsRelationshipContext(nextTarget)) return;
-    if (
-      document.activeElement instanceof HTMLElement &&
-      document.activeElement.hasAttribute('data-restoring-focus')
-    )
-      return;
-    if (!inspection && !dragBubble) hoveredId = id;
-  }
-  let notice = $state<{ text: string; error: boolean } | null>(null);
-  let noticeTimer: ReturnType<typeof setTimeout> | undefined;
-  let preview = $state<DragPreview | null>(null);
-  const shownPreview: DragPreview | null = $derived(
-    preview ??
-      (inspection?.kind === 'quick' && inspection.previewValid
-        ? {
-            kind: inspection.draftKind === 'block' ? 'block' : 'activity',
-            start: inspection.start,
-            duration: inspection.previewDuration,
-            label:
-              inspection.draftTitle ||
-              (inspection.draftKind === 'block' ? 'Blocked time' : 'New activity')
-          }
-        : null)
-  );
-  let dropTargetId = $state<string | null>(null);
-  let dragBubble = $state<{ x: number; y: number; title: string; detail: string } | null>(null);
-  let cancelGesture: (() => void) | undefined;
-  let calendar = $state<Timeline>();
-  let agenda = $state<Agenda>();
-  function activeView() {
-    return view === 'calendar' ? calendar : agenda;
-  }
-  async function setView(next: 'calendar' | 'agenda', day?: string) {
-    flushEditor();
-    if (inspection?.kind === 'quick') inspection = null;
-    view = next;
+  function commit(next: KitchenPlan, message = '') {
+    if (!loaded) return false;
     try {
-      localStorage.setItem('meal-prep:view', next);
-    } catch {
-      /* Optional browser preference. */
-    }
-    await tick();
-    if (day) activeView()?.revealDay(day);
-    else if (selectedId && plan.activities.some((item) => item.id === selectedId))
-      activeView()?.revealActivity(selectedId);
-    else if (days.includes(todayDay())) activeView()?.revealDay(todayDay());
-  }
-  function planOnCalendar(day: string) {
-    void setView('calendar', day);
-  }
-  const days = $derived(Array.from({ length: dayCount }, (_, index) => addDays(startDay, index)));
-  const endDay = $derived(days[days.length - 1]);
-  const warnings = $derived(validateKitchenPlan(plan));
-  const rangeTitle = $derived(
-    `${dateLabel(startDay, startDay.slice(0, 7) === endDay.slice(0, 7) ? { day: 'numeric' } : { day: 'numeric', month: 'short' })} - ${dateLabel(endDay, { day: 'numeric', month: 'long' })}`
-  );
-  const mealSource = $derived(plan.batches.find((batch) => batch.id === mealSourceId));
-  onDestroy(() => {
-    cancelGesture?.();
-    clearTimeout(noticeTimer);
-  });
-
-  function tell(text: string, error = false) {
-    clearTimeout(noticeTimer);
-    notice = { text, error };
-    noticeTimer = setTimeout(() => (notice = null), error ? 7000 : 4000);
-  }
-  function commit(next: KitchenPlan, message?: string): boolean {
-    try {
-      const invalid = validateKitchenPlan(next).find(
-        (issue) => issue.code.startsWith('INVALID_') || issue.code.startsWith('MISSING_')
-      );
-      if (invalid) throw new Error(invalid.message);
-      const snapshot = parseKitchenPlan($state.snapshot(next));
-      if (!sync) throw new Error('Wait for the saved plan to load.');
-      sync.change(snapshot);
-      history = [...history.slice(-29), $state.snapshot(plan)];
-      plan = snapshot;
-      relationPreview = null;
-      if (
-        (mealSourceId && !plan.batches.some((batch) => batch.id === mealSourceId)) ||
-        (assignment &&
-          !(assignment.kind === 'ingredient' ? plan.ingredients : plan.batches).some(
-            (food) => food.id === assignment?.id
-          ))
-      )
-        cancelPlacement();
-      if (message) tell(message);
+      next = linkIngredients(next);
+      parseKitchenPlan(next);
+      undoPlan = clone(plan);
+      plan = next;
+      sync.change(next);
+      noticeVersion++;
+      notice = message;
+      noticeIsWarning = false;
+      error = '';
       return true;
-    } catch (error) {
-      tell(error instanceof Error ? error.message : 'That change could not be applied.', true);
+    } catch {
+      error = i18n.t('planner.thisChangeCouldNotBeSavedCheck');
       return false;
     }
   }
-  function attempt(action: () => boolean): boolean {
-    try {
-      return action();
-    } catch (error) {
-      tell(error instanceof Error ? error.message : 'Check that value.', true);
-      return false;
+  async function removeCookingSession(id: string) {
+    const linked = servingSlots(plan, id);
+    let choice: string | null = 'keep';
+    if (linked.length) {
+      choice = await askChoice(
+        i18n.t('planner.removeCookingPlan2'),
+        i18n.t('planner.removeCookQuestion', { count: linked.length }),
+        [
+          { value: 'keep', label: i18n.t('planner.keepMeals') },
+          { value: 'remove', label: i18n.t('planner.removeMealsToo') }
+        ]
+      );
     }
+    if (!choice) return false;
+    return commit(
+      removeCooking(plan, id, choice === 'remove'),
+      choice === 'remove'
+        ? i18n.t('planner.cookingPlanAndLinkedMealsRemoved')
+        : i18n.t('planner.cookingPlanRemoved')
+    );
   }
   function undo() {
-    const previous = history[history.length - 1];
-    if (!previous || !sync) return;
-    try {
-      sync.change($state.snapshot(previous));
-    } catch {
-      tell('Wait for the saved plan to load.', true);
-      return;
-    }
-    inspection = null;
-    selectedId = null;
-    hoveredId = null;
-    cancelPlacement();
+    if (!undoPlan) return;
+    const previous = undoPlan;
     plan = previous;
-    history = history.slice(0, -1);
-    tell('Last change undone.');
+    sync.change(previous);
+    undoPlan = null;
+    noticeVersion++;
+    notice = i18n.t('planner.changeUndone');
+    noticeIsWarning = false;
   }
-  function go(day: string, count = dayCount): boolean {
-    try {
-      parseDay(day);
-      if (day < '0001-01-01' || !Number.isSafeInteger(count) || count < 1) throw new Error();
-      addDays(day, count - 1);
-      startDay = day;
-      dayCount = count;
-      inspection = null;
-      selectedId = null;
-      hoveredId = null;
-      void tick().then(() => activeView()?.revealDay(day));
-      return true;
-    } catch {
-      tell('That date range is outside the supported calendar. Your view has not changed.', true);
-      return false;
-    }
-  }
-  function shift(offset: number, count = dayCount) {
-    attempt(() => go(addDays(startDay, offset), count));
-  }
-  function jump(event: Event & { currentTarget: HTMLInputElement }) {
-    const input = event.currentTarget;
-    if (!input.checkValidity() || !input.value || !go(input.value)) {
-      input.value = startDay;
-      tell('Enter a valid date range within years 1-9999.', true);
-    }
-  }
-  function closeInspector(key: string) {
-    if (inspection?.key !== key) return;
-    inspection = null;
-    selectedId = null;
-    hoveredId = null;
-    relationPreview = null;
-    clearChecksContext();
-    inspectorExpanded = false;
-    recipeSelectedId = null;
-  }
-  function retainsRelationshipContext(target?: EventTarget | null) {
-    return (
-      calendar?.hasOutsideRelationships() &&
-      target instanceof Element &&
-      !!target.closest('.calendar-shell')
-    );
-  }
-  function hover(id: string | null, event: PointerEvent) {
-    if (id === null && retainsRelationshipContext(event.target)) return;
-    if (
-      !event.isTrusted ||
-      (event.pointerType !== 'mouse' && event.pointerType !== 'pen') ||
-      event.buttons !== 0 ||
-      document.body.classList.contains('is-dragging')
-    )
-      return;
-    if (hoveredId !== id) hoveredId = id;
-  }
-  function leaveHover(id: string, event: PointerEvent) {
-    if (hoveredId === id) hover(null, event);
-  }
-  function outsidePointer(event: PointerEvent) {
-    if (inspection || (!selectedId && !hoveredId) || event.button !== 0) return;
-    if (
-      event.target instanceof Element &&
-      event.target.closest(
-        '[data-activity-id], [data-food-id], [data-blocker-id], .placement-banner, .relationship-strip'
-      )
-    )
-      return;
-    selectedId = null;
-    hoveredId = null;
-  }
-  function outsideHover(event: PointerEvent) {
-    if (
-      !(event.target instanceof Element) ||
-      !event.target.closest('[data-activity-id], [data-food-id], .relationship-strip')
-    )
-      hover(null, event);
-  }
-  function cancelPlacement() {
-    assignment = null;
-    mode = 'activity';
-    mealSourceId = null;
-    relationPreview = null;
-  }
-  function flushEditor() {
-    if (
-      document.activeElement instanceof HTMLElement &&
-      document.activeElement.closest('[role="dialog"]')
-    )
-      document.activeElement.blur();
-  }
-  function inspect(
-    kind: 'activity' | 'block' | 'ingredient' | 'batch',
-    id: string,
-    element?: HTMLElement | null
-  ) {
-    flushEditor();
-    relationPreview = null;
-    selectedId = id;
-    hoveredId = null;
-    if (kind === 'activity') {
-      if (mode === 'meal' && mealSourceId) {
-        if (assignFood('batch', mealSourceId, id, mealAmount(mealSourceId))) cancelPlacement();
-        return;
-      }
-      lastActivityId = id;
-    }
-    inspection = { key: `${kind}-${id}`, kind, id, anchor: element };
-  }
-  function chooseOnCalendar(kind: 'ingredient' | 'batch', id: string, amount: number) {
-    if (!Number.isFinite(amount) || amount <= 0) return;
-    flushEditor();
-    cancelPlacement();
-    const food = (kind === 'ingredient' ? plan.ingredients : plan.batches).find(
-      (item) => item.id === id
-    );
-    if (!food) return;
-    assignment = { kind, id, amount, name: food.name };
-    void setView('calendar');
-    inspection = null;
-    selectedId = id;
-    hoveredId = null;
-  }
-  function activateActivity(id: string, element: HTMLElement) {
-    if (assignment) {
-      const pending = assignment;
-      if (assignFood(pending.kind, pending.id, id, pending.amount)) cancelPlacement();
-      return;
-    }
-    inspect('activity', id, element);
-  }
-  let navigationVersion = 0;
-  async function navigateEntity(target: EntityRef, at?: LocalTime, reveal?: CheckAction['reveal']) {
-    // Commit the old field before replacing its keyed inspector. Navigation never assigns food.
-    flushEditor();
-    if (entityRef(plan, target.id)?.kind !== target.kind) return;
-    const activity = plan.activities.find(
-      (item) => target.kind === 'activity' && item.id === target.id
-    );
-    const blocker = plan.blockers.find((item) => target.kind === 'block' && item.id === target.id);
-    const batch = plan.batches.find((item) => target.kind === 'batch' && item.id === target.id);
-    const time =
-      at ?? activity?.start ?? blocker?.start ?? (batch ? batchReadyAt(plan, batch) : undefined);
-    if (time) {
-      const timedEntity =
-        activity ??
-        blocker ??
-        (batch?.source.kind === 'activity'
-          ? plan.activities.find(
-              (item) => batch.source.kind === 'activity' && item.id === batch.source.activityId
-            )
-          : undefined);
-      const day = timedEntity
-        ? (endpointSegmentDay(
-            timedEntity.start,
-            'elapsedMinutes' in timedEntity
-              ? timedEntity.elapsedMinutes
-              : timedEntity.durationMinutes,
-            time,
-            time.minute === 0 && timedEntity.start.day < time.day
-              ? [time.day, addMinutes(time, -1).day]
-              : [time.day]
-          ) ?? time.day)
-        : time.day;
-      startDay = rangeForTarget(startDay, dayCount, day);
-    }
-    const version = ++navigationVersion;
-    selectedId = target.id;
-    hoveredId = null;
-    relationPreview = null;
-    if (activity) lastActivityId = activity.id;
-    const key = `${target.kind}-${target.id}`;
-    inspection = { key, ...target, reveal };
-    // The inspector changes the calendar width. Reveal the exact endpoint only
-    // after its final layout and sticky relationship surface have mounted.
+  async function show(kind: NonNullable<typeof modal>) {
+    opener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    error = '';
+    photoOpen = false;
+    modal = kind;
+    initialDraft = draftKey();
     await tick();
-    await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
-    if (version !== navigationVersion || inspection?.key !== key) return;
-    let anchor: HTMLElement | undefined;
-    if (activity) anchor = activeView()?.revealActivity(activity.id, time);
-    else if (blocker) anchor = activeView()?.revealBlock(blocker.id, time);
-    else if (batch?.source.kind === 'activity')
-      anchor = activeView()?.revealActivity(batch.source.activityId, time);
-    else
-      anchor =
-        document.querySelector<HTMLElement>(`[data-food-id="${CSS.escape(target.id)}"]`) ??
-        undefined;
-    inspection = { key, ...target, anchor, reveal };
+    dialog?.showModal();
+    if (!editing && kind !== 'meal-choice')
+      dialog?.querySelector<HTMLInputElement>('.wp-food-dialog-heading input')?.focus();
   }
-  function openBlank(
-    start: LocalTime,
-    element?: HTMLElement | null,
-    duration?: number,
-    editableStart = false
-  ) {
-    if (assignment) return;
-    const length = duration ?? (mode === 'meal' ? 30 : 45);
-    try {
-      addMinutes(start, length);
-    } catch {
-      tell('Choose a time range within the supported calendar.', true);
-      return;
-    }
-    if (mode === 'meal' && mealSourceId) {
-      createMeal(mealSourceId, start, length);
-      return;
-    }
-    selectedId = null;
-    hoveredId = null;
-    inspection = {
-      key: newId('quick'),
-      kind: 'quick',
-      start,
-      initialKind: 'cook',
-      draftKind: 'cook',
-      draftTitle: '',
-      suppliedDuration: length,
-      durationProvided: duration !== undefined,
-      editableStart,
-      previewDuration: length,
-      previewValid: true,
-      anchor: element
-    };
-  }
-  function updateDraftStart(start: LocalTime) {
-    if (inspection?.kind !== 'quick') return;
-    inspection = { ...inspection, start };
-    updateDraft(inspection.draftTitle, inspection.draftKind, inspection.previewDuration);
-  }
-  function revealCreated(id: string, start: LocalTime, kind: 'activity' | 'block' = 'activity') {
-    startDay = rangeForTarget(startDay, dayCount, start.day);
-    void tick().then(() => {
-      if (kind === 'block') activeView()?.revealBlock(id);
-      else activeView()?.revealActivity(id);
-    });
-  }
-  function updateDraft(title: string, kind: QuickKind, duration: number) {
-    if (inspection?.kind !== 'quick') return;
-    let valid = true;
-    try {
-      addMinutes(inspection.start, duration);
-    } catch {
-      valid = false;
-      if (inspection.previewValid || inspection.previewDuration !== duration)
-        tell('Choose a time range within the supported calendar.', true);
-    }
+  async function close(force = false) {
     if (
-      inspection.draftTitle !== title ||
-      inspection.draftKind !== kind ||
-      inspection.previewDuration !== duration ||
-      inspection.previewValid !== valid
+      !force &&
+      draftKey() !== initialDraft &&
+      !(await confirmAction(i18n.t('planner.discardTheseUnsavedEdits')))
     )
-      inspection = {
-        ...inspection,
-        draftTitle: title,
-        draftKind: kind,
-        previewDuration: duration,
-        previewValid: valid
-      };
-  }
-  function createActivity(
-    title: string,
-    kind: QuickKind,
-    start: LocalTime,
-    duration = 45,
-    chosen?: { id: string; yieldQuantity: number }
-  ) {
-    if (chosen) {
-      attempt(() => {
-        if (kind !== 'cook') throw new Error('Choose a cooking activity for this recipe.');
-        const recipe = plan.recipes.find((item) => item.id === chosen.id);
-        if (!recipe) throw new Error('This recipe is no longer available.');
-        const { activity, batch, requirements } = instantiateRecipe(
-          recipe,
-          {
-            activityId: newId('activity'),
-            batchId: newId('batch'),
-            start,
-            title,
-            durationMinutes: duration,
-            yieldQuantity: chosen.yieldQuantity
-          },
-          () => newId('requirement')
-        );
-        // Reject spans past the calendar boundary before displaying a preview or saving.
-        addMinutes(start, duration);
-        if (
-          !commit({
-            ...plan,
-            activities: [...plan.activities, activity],
-            batches: [...plan.batches, batch],
-            activityRequirements: [...plan.activityRequirements, ...requirements]
-          })
-        )
-          return false;
-        inspection = null;
-        selectedId = activity.id;
-        lastActivityId = activity.id;
-        revealCreated(activity.id, start);
-        return true;
-      });
-      return;
-    }
-    if (kind === 'block') {
-      const blocker: Blocker = {
-        id: newId('block'),
-        title,
-        start,
-        durationMinutes: duration,
-        away: false
-      };
-      if (commit({ ...plan, blockers: [...plan.blockers, blocker] })) {
-        inspection = null;
-        cancelPlacement();
-        selectedId = blocker.id;
-        revealCreated(blocker.id, start, 'block');
-      }
-      return;
-    }
-    const activity: Activity = {
-      id: newId('activity'),
-      title,
-      kind: kind === 'cook' ? 'cook' : kind === 'meal' ? 'meal' : 'other',
-      start,
-      elapsedMinutes: duration,
-      handsOnMinutes: 0,
-      requiresHome: false,
-      notes: ''
-    };
-    const batch: Batch = {
-      id: newId('batch'),
-      name: title,
-      quantity: 4,
-      unit: '',
-      source: { kind: 'activity', activityId: activity.id }
-    };
-    if (
-      commit({
-        ...plan,
-        activities: [...plan.activities, activity],
-        batches: kind === 'cook' ? [...plan.batches, batch] : plan.batches
-      })
-    ) {
-      inspection = null;
-      selectedId = activity.id;
-      lastActivityId = activity.id;
-      revealCreated(activity.id, start);
-    }
-  }
-  function openIssues(element?: HTMLElement) {
-    if (!persistence.loaded || persistence.phase === 'loading' || inspection?.kind === 'issues')
-      return;
-    flushEditor();
-    selectedId = null;
-    hoveredId = null;
-    relationPreview = null;
-    if (checksSession.originKey) checksSession.returning = true;
-    inspection = {
-      key: 'issues',
-      kind: 'issues',
-      anchor:
-        element ??
-        document.querySelector<HTMLElement>(
-          '.heading-actions [data-inspector-destination="issues"]'
-        )
-    };
-  }
-  function openRecipes(element?: HTMLElement) {
-    if (!persistence.loaded || persistence.phase === 'loading' || inspection?.kind === 'recipes')
-      return;
-    flushEditor();
-    selectedId = null;
-    hoveredId = null;
-    relationPreview = null;
-    clearChecksContext();
-    inspection = {
-      key: 'recipes',
-      kind: 'recipes',
-      anchor:
-        element ??
-        document.querySelector<HTMLElement>(
-          '.heading-actions [data-inspector-destination="recipes"]'
-        )
-    };
-  }
-  function addRecipe(name: string): string | null {
-    const recipe = createRecipe(newId('recipe'), name);
-    return commit({ ...plan, recipes: [...plan.recipes, recipe] }) ? recipe.id : null;
-  }
-  function patchRecipe(id: string, patch: Partial<Recipe>): boolean {
-    if (patch.name !== undefined && !patch.name.trim()) {
-      tell('Give the recipe a name.', true);
       return false;
+    dialog?.close();
+    modal = null;
+    error = '';
+    opener?.focus({ preventScroll: true });
+    return true;
+  }
+  function newMeal(
+    day = days.includes(todayDay()) ? todayDay() : week,
+    meal: MealSlot = 'Dinner',
+    name = '',
+    kind: MealStyle = 'cook',
+    instructions = '',
+    ingredients: Recipe['ingredients'] = [],
+    image = ''
+  ) {
+    editing = '';
+    title = name;
+    date = day;
+    slot = meal;
+    style = kind;
+    notes = instructions;
+    photo = image;
+    sourceId = '';
+    leftoverId = '';
+    sourcePortions = preferredPortions;
+    mealIngredients = ingredients;
+    shopWithMeal = false;
+    void show(!name && kind === 'cook' ? 'meal-choice' : 'meal');
+  }
+  function editMeal(a: Activity) {
+    editing = a.id;
+    title = a.title;
+    date = a.start.day;
+    slot = mealSlot(a, plan);
+    style = mealStyle(plan, a);
+    notes = a.notes;
+    photo = plan.weekly?.images?.[a.id] ?? '';
+    sourceId = plan.weekly?.mealSources?.[a.id]?.sessionId ?? '';
+    leftoverId = plan.weekly?.leftoverSources?.[a.id]?.batchId ?? '';
+    sourcePortions =
+      plan.weekly?.mealSources?.[a.id]?.portions ??
+      plan.weekly?.leftoverSources?.[a.id]?.portions ??
+      2;
+    mealIngredients = [];
+    shopWithMeal = false;
+    void show('meal');
+  }
+  function newRecipe(recipe?: Recipe, suggestedName = '') {
+    photo = plan.weekly?.images?.[recipe?.id ?? ''] ?? '';
+    editing = recipe?.id ?? '';
+    title = recipe?.name ?? suggestedName;
+    notes = recipe?.instructions ?? '';
+    portions = recipe?.yieldQuantity ?? 4;
+    recipeIngredients = recipe?.ingredients.length
+      ? recipe.ingredients
+      : [{ id: uid(), name: '', quantity: 1, unit: '', preparation: '' }];
+    recipePaste = '';
+    void show('recipe');
+  }
+  function newLeftover(batch?: Batch) {
+    leftoverRecipeId = batch?.recipeId ?? '';
+    photo = plan.weekly?.images?.[batch?.id ?? ''] ?? '';
+    editing = batch?.id ?? '';
+    title = batch?.name ?? '';
+    portions = batch?.quantity ?? 2;
+    notes = '';
+    sourceId = '';
+    leftoverId = '';
+    void show('leftover');
+  }
+  function imageRecord(id: string) {
+    const photo = dialogPhoto;
+    const images = { ...extras(plan).images };
+    if (photo) images[id] = photo;
+    else delete images[id];
+    return images;
+  }
+  function chooseSource(id: string) {
+    sourceId = id;
+    const session = sessions.find((s) => s.id === id);
+    if (session) {
+      title = session.name;
+      sourcePortions = Math.min(sourcePortions, remaining(id));
+      notes = session.notes;
+      photo = plan.weekly?.images?.[id] ?? '';
+      style = 'leftovers';
     }
-    return commit({
-      ...plan,
-      recipes: plan.recipes.map((recipe) => (recipe.id === id ? { ...recipe, ...patch } : recipe))
-    });
   }
-  function addRecipeIngredient(recipeId: string, text: string): boolean {
-    return attempt(() => {
-      const { name, quantity: amount } = parseIngredient(text);
-      const recipe = plan.recipes.find((item) => item.id === recipeId);
-      if (!recipe) return false;
-      const ingredient: RecipeIngredient = {
-        id: newId('recipe-ingredient'),
-        name,
-        quantity: amount
-      };
-      return patchRecipe(recipeId, { ingredients: [...recipe.ingredients, ingredient] });
-    });
+  function openCooking(
+    recipe?: Recipe,
+    session?: CookingSession,
+    day = days.includes(todayDay()) ? todayDay() : week,
+    firstMeal?: MealSlot
+  ) {
+    cooking = { recipe, session, day, firstMeal };
   }
-  function patchRecipeIngredient(
-    recipeId: string,
-    id: string,
-    patch: Partial<RecipeIngredient>
-  ): boolean {
-    const recipe = plan.recipes.find((item) => item.id === recipeId);
-    if (!recipe) return false;
-    return patchRecipe(recipeId, {
-      ingredients: recipe.ingredients.map((item) => (item.id === id ? { ...item, ...patch } : item))
-    });
+  function addUseSoon(value = useSoonText) {
+    const name = value.trim();
+    if (
+      name &&
+      commit(
+        { ...plan, weekly: { ...extras(plan), useSoon: [...useSoon, { id: uid(), name }] } },
+        i18n.t('planner.ingredientAdded')
+      )
+    )
+      useSoonText = '';
   }
-  function removeRecipeIngredient(recipeId: string, id: string) {
-    const recipe = plan.recipes.find((item) => item.id === recipeId);
-    if (recipe)
-      patchRecipe(recipeId, { ingredients: recipe.ingredients.filter((item) => item.id !== id) });
-  }
-  function deleteRecipe(id: string): boolean {
-    return commit(
-      { ...plan, recipes: plan.recipes.filter((recipe) => recipe.id !== id) },
-      'Recipe removed. Planned activities stay as they are.'
+  function removeUseSoon(id: string) {
+    commit(
+      { ...plan, weekly: { ...extras(plan), useSoon: useSoon.filter((item) => item.id !== id) } },
+      i18n.t('planner.ingredientRemoved')
     );
   }
-  function patchRequirement(id: string, patch: Partial<ActivityRequirement>): boolean {
-    return commit({
-      ...plan,
-      activityRequirements: plan.activityRequirements.map((item) =>
-        item.id === id ? { ...item, ...patch } : item
-      )
-    });
-  }
-  function addRequirement(activityId: string, text: string): boolean {
-    return attempt(() => {
-      const { name, quantity: amount } = parseIngredient(text);
-      return commit({
-        ...plan,
-        activityRequirements: [
-          ...plan.activityRequirements,
-          {
-            id: newId('requirement'),
-            activityId,
-            name,
-            quantity: amount
-          }
-        ]
-      });
-    });
-  }
-  function removeRequirement(id: string) {
-    commit({
-      ...plan,
-      activityRequirements: plan.activityRequirements.filter((item) => item.id !== id)
-    });
-  }
-  function patchActivity(id: string, patch: Partial<Activity>): boolean {
-    const activity = plan.activities.find((item) => item.id === id);
-    if (!activity) return false;
-    if (patch.title !== undefined && !patch.title.trim()) {
-      tell('Give the activity a name.', true);
-      return false;
-    }
-    const next = { ...activity, ...patch };
-    return commit({
-      ...plan,
-      activities: plan.activities.map((a) => (a.id === id ? next : a)),
-      batches: patch.title
-        ? plan.batches.map((batch) =>
-            batch.source.kind === 'activity' &&
-            batch.source.activityId === id &&
-            batch.name === activity.title
-              ? { ...batch, name: patch.title! }
-              : batch
-          )
-        : plan.batches
-    });
-  }
-  function patchBlocker(id: string, patch: Partial<Blocker>) {
-    if (patch.title !== undefined && !patch.title) return false;
-    return commit({
-      ...plan,
-      blockers: plan.blockers.map((item) => (item.id === id ? { ...item, ...patch } : item))
-    });
-  }
-  function patchBatch(id: string, patch: Partial<Batch>): boolean {
-    if (patch.name !== undefined && !patch.name.trim()) {
-      tell('Food needs a name.', true);
-      return false;
-    }
-    return commit({
-      ...plan,
-      batches: plan.batches.map((batch) => (batch.id === id ? { ...batch, ...patch } : batch))
-    });
-  }
-  function patchFood(
-    kind: 'ingredient' | 'batch',
-    id: string,
-    patch: { name?: string; quantity?: number }
-  ) {
-    return kind === 'batch'
-      ? patchBatch(id, patch)
-      : commit({
-          ...plan,
-          ingredients: plan.ingredients.map((item) =>
-            item.id === id ? { ...item, ...patch } : item
-          )
-        });
-  }
-  function addFood(kind: 'ingredient' | 'batch', text: string): boolean {
-    return attempt(() => {
-      if (kind === 'ingredient') {
-        const ingredient = { ...parseIngredient(text), id: newId('ingredient') };
-        return commit(
-          { ...plan, ingredients: [...plan.ingredients, ingredient] },
-          `${ingredient.name} added to ingredients to use.`
-        );
-      }
-      const batch: Batch = {
-        ...parsePreparedFood(text),
-        id: newId('stock'),
-        source: { kind: 'existing', availableAt: { day: startDay, minute: 0 } }
-      };
-      return commit(
-        { ...plan, batches: [...plan.batches, batch] },
-        `${batch.name} added as already cooked food.`
-      );
-    });
-  }
-  function patchRawUse(id: string, amount: number) {
-    return attempt(() => commit(patchIngredientUseAmount(plan, id, amount)));
-  }
-  function assignFood(
-    kind: 'ingredient' | 'batch',
-    id: string,
-    activityId: string,
-    amount: number
-  ): boolean {
-    if (!Number.isFinite(amount) || amount <= 0) {
-      tell('Nothing left unplanned. Adjust an existing allocation first.', true);
-      return false;
-    }
-    const applied =
-      kind === 'ingredient'
-        ? attempt(() =>
-            commit(addIngredientAssignment(plan, id, activityId, amount, () => newId('use')))
-          )
-        : attempt(() =>
-            commit(addBatchAssignment(plan, id, activityId, amount, () => newId('allocation')))
-          );
-    if (applied) {
-      selectedId = id;
-      tell(
-        `Assigned ${quantity(amount)} ${(kind === 'ingredient' ? plan.ingredients : plan.batches).find((item) => item.id === id)?.name} to ${plan.activities.find((a) => a.id === activityId)?.title}.`
-      );
-    }
-    return applied;
-  }
-  function patchAllocation(id: string, amount: number) {
-    return attempt(() => commit(patchAllocationAmount(plan, id, amount)));
-  }
-  function startMeal(batchId: string) {
-    cancelPlacement();
-    mode = 'meal';
-    mealSourceId = batchId;
-    void setView('calendar');
-    inspection = null;
-    selectedId = null;
-    hoveredId = null;
-  }
-  function mealAmount(batchId: string) {
-    const remaining = batchTotals(plan, batchId).remaining;
-    return remaining > 0 ? Math.min(2, remaining) : 2;
-  }
-  function createMeal(batchId: string, start: LocalTime, duration = 30) {
-    const batch = plan.batches.find((item) => item.id === batchId);
-    if (!batch) return;
-    const amount = mealAmount(batchId),
-      id = newId('meal');
-    const activity: Activity = {
-      id,
-      title: `${batch.name} meal`,
-      kind: 'meal',
-      start,
-      elapsedMinutes: duration,
-      handsOnMinutes: 0,
-      requiresHome: false,
-      notes: ''
-    };
-    if (
-      commit({
-        ...plan,
-        activities: [...plan.activities, activity],
-        allocations: [
-          ...plan.allocations,
-          {
-            id: newId('allocation'),
-            batchId,
-            activityId: id,
-            quantity: amount,
-            purpose: 'eat',
-            when: 'start'
-          }
-        ]
-      })
-    ) {
-      cancelPlacement();
-      inspection = null;
-      selectedId = id;
-      lastActivityId = id;
-      tick().then(() => calendar?.revealActivity(id));
-    }
-  }
-  function addOutput(activityId: string) {
-    commit({
-      ...plan,
-      batches: [
-        ...plan.batches,
-        {
-          id: newId('batch'),
-          name: 'Extra food',
-          quantity: 2,
-          unit: '',
-          source: { kind: 'activity', activityId }
-        }
-      ]
-    });
-  }
-  function removeOutput(id: string) {
-    commit({ ...plan, ...removeBatch(plan, id) }, 'Food output and its allocations removed.');
-  }
-  function remove(kind: 'activity' | 'block' | 'ingredient' | 'batch', id: string) {
-    const next =
-      kind === 'activity'
-        ? deleteActivity(plan, id)
-        : kind === 'block'
-          ? deleteBlocker(plan, id)
-          : kind === 'ingredient'
-            ? deleteIngredient(plan, id)
-            : { ...plan, ...removeBatch(plan, id) };
-    inspection = null;
-    selectedId = null;
-    hoveredId = null;
-    commit(next, 'Removed from the plan.');
+  function chooseLeftoverRecipe(recipe: Recipe) {
+    leftoverRecipeId = recipe.id;
+    title = recipe.name;
+    photo = plan.weekly?.images?.[recipe.id] ?? '';
+    portions = recipe.yieldQuantity;
   }
 
-  function hitCalendar(point: DragPoint, boundary = false): LocalTime | null {
-    const area = document.querySelector<HTMLElement>('.calendar-scroll');
-    if (!area) return null;
-    const bounds = area.getBoundingClientRect();
-    if (
-      point.x < bounds.left + 52 ||
-      point.x > bounds.right ||
-      point.y < bounds.top + 54 ||
-      point.y > bounds.bottom
-    )
-      return null;
-    const column = document
-      .elementFromPoint(point.x, point.y)
-      ?.closest<HTMLElement>('[data-time-day]');
-    if (!column?.dataset.timeDay) return null;
-    try {
-      const minute = snapMinute(
-        (point.y - column.getBoundingClientRect().top) / PX_PER_MINUTE,
-        boundary
-      );
-      return addMinutes({ day: column.dataset.timeDay, minute: 0 }, minute);
-    } catch {
-      return null;
-    }
-  }
-  function autoScroll(point: DragPoint) {
-    const area = document.querySelector<HTMLElement>('.calendar-scroll');
-    if (!area) return;
-    const bounds = area.getBoundingClientRect();
-    if (
-      point.x < bounds.left ||
-      point.x > bounds.right ||
-      point.y < bounds.top ||
-      point.y > bounds.bottom
-    )
-      return;
-    const dx = point.x > bounds.right - 30 ? 9 : point.x < bounds.left + 72 ? -9 : 0;
-    const dy = point.y > bounds.bottom - 16 ? 9 : point.y < bounds.top + 70 ? -9 : 0;
-    if (dx || dy) {
-      area.scrollLeft += dx;
-      area.scrollTop += dy;
-    }
-  }
-  function clearDrag() {
-    preview = null;
-    dropTargetId = null;
-    dragBubble = null;
-  }
-  function showDrag(point: DragPoint, title: string, detail: string) {
-    inspection = null;
-    hoveredId = null;
-    if (
-      !dragBubble ||
-      dragBubble.x !== point.x ||
-      dragBubble.y !== point.y ||
-      dragBubble.detail !== detail
-    )
-      dragBubble = { ...point, title, detail };
-  }
-  function acceptsDrag(event: PointerEvent) {
-    return (
-      event.button === 0 &&
-      (event.pointerType !== 'touch' ||
-        (event.target as HTMLElement).closest('[data-drag-handle],.resize-handle') !== null)
-    );
-  }
-  function timeDrag(
-    event: PointerEvent,
-    id: string,
-    kind: 'activity' | 'block',
-    edge?: ResizeEdge
-  ) {
-    if (assignment || !acceptsDrag(event)) return;
-    const item =
-      kind === 'activity'
-        ? plan.activities.find((a) => a.id === id)
-        : plan.blockers.find((b) => b.id === id);
-    if (!item) return;
-    const duration = 'elapsedMinutes' in item ? item.elapsedMinutes : item.durationMinutes;
-    const initial = hitCalendar({ x: event.clientX, y: event.clientY });
-    const offset = initial ? absoluteMinute(initial) - absoluteMinute(item.start) : 0;
-    cancelGesture?.();
-    const destination = (point: DragPoint) => {
-      const hit = hitCalendar(point, !!edge);
-      if (!hit) return null;
-      try {
-        if (edge) return resizeSpan(item.start, duration, edge, hit);
-        const start = addMinutes(hit, -offset);
-        addMinutes(start, duration);
-        return { start, duration };
-      } catch {
-        return null;
+  function save() {
+    if (photoBusy) return;
+    if (!title.trim()) return;
+    if (modal === 'meal') {
+      const source = sessions.find((s) => s.id === sourceId);
+      if (source && date < source.day) {
+        error = i18n.t('planner.chooseAMealOnOrAfterThe');
+        return;
       }
-    };
-    cancelGesture = pointerDrag(event, {
-      move: (point) => {
-        autoScroll(point);
-        const next = destination(point);
-        preview = next ? { id, kind, ...next, label: item.title } : null;
-        showDrag(
-          point,
-          item.title,
-          next
-            ? `${formatTime(next.start.minute)} / ${next.duration} minutes`
-            : 'Drop onto the calendar'
-        );
-      },
-      drop: (point) => {
-        const next = destination(point);
-        clearDrag();
-        if (!next) return;
-        const applied = attempt(() =>
-          kind === 'activity'
-            ? patchActivity(id, { start: next.start, elapsedMinutes: next.duration })
-            : commit(moveBlocker(plan, id, next.start, next.duration))
-        );
-        if (applied) {
-          selectedId = id;
-          if (kind === 'activity') lastActivityId = id;
+      const previousPortions =
+        plan.weekly?.mealSources?.[editing]?.sessionId === sourceId
+          ? plan.weekly.mealSources[editing].portions
+          : 0;
+      if (source && sourcePortions > remaining(sourceId) + previousPortions) {
+        error = i18n.t('planner.availableError', { count: remaining(sourceId) + previousPortions });
+        return;
+      }
+      if (leftoverId) {
+        const previous =
+          extras(plan).leftoverSources?.[editing]?.batchId === leftoverId
+            ? extras(plan).leftoverSources![editing].portions
+            : 0;
+        if (sourcePortions > leftoverRemaining(leftoverId) + previous) {
+          error = i18n.t('planner.notEnoughLeftoverPortionsChooseFewerPortions');
+          return;
         }
-      },
-      cancel: clearDrag
-    });
-  }
-  function foodDrag(event: PointerEvent, kind: 'ingredient' | 'batch', id: string) {
-    if (!acceptsDrag(event)) return;
-    const food = (kind === 'ingredient' ? plan.ingredients : plan.batches).find(
-      (item) => item.id === id
-    );
-    if (!food) return;
-    const amount =
-      kind === 'ingredient'
-        ? ingredientTotals(plan, id).remaining
-        : Math.min(2, batchTotals(plan, id).remaining);
-    const target = (point: DragPoint) =>
-      document.elementFromPoint(point.x, point.y)?.closest<HTMLElement>('[data-activity-id]')
-        ?.dataset.activityId ?? null;
-    let edgeSince: number | null = null;
-    cancelGesture?.();
-    cancelGesture = pointerDrag(event, {
-      move: (point) => {
-        const bounds = document.querySelector('.calendar-scroll')?.getBoundingClientRect();
-        const nearEdge =
-          bounds &&
-          point.x >= bounds.left &&
-          point.x <= bounds.right &&
-          point.y >= bounds.top &&
-          point.y <= bounds.bottom &&
-          (point.x < bounds.left + 72 ||
-            point.x > bounds.right - 30 ||
-            point.y < bounds.top + 70 ||
-            point.y > bounds.bottom - 16);
-        // Pause at the calendar edge before scrolling past an intended drop target.
-        if (!target(point) && nearEdge) {
-          edgeSince ??= performance.now();
-          if (performance.now() - edgeSince > 300) autoScroll(point);
-        } else edgeSince = null;
-        dropTargetId = target(point);
-        showDrag(
-          point,
-          `${quantity(amount)} ${food.name}`,
-          dropTargetId
-            ? `Use in ${plan.activities.find((a) => a.id === dropTargetId)?.title}`
-            : kind === 'ingredient'
-              ? 'Drop onto a cooking or eating card'
-              : 'Drop onto a meal, or an empty time'
-        );
-      },
-      drop: (point) => {
-        const activityId = target(point),
-          start = hitCalendar(point);
-        clearDrag();
-        if (activityId) {
-          assignFood(kind, id, activityId, amount);
-        } else if (kind === 'batch' && start && amount > 0) {
-          createMeal(id, start);
-        } else
-          tell(
-            'Drop ingredients onto an activity card, or tap the ingredient to choose one.',
-            true
-          );
-      },
-      cancel: clearDrag
-    });
-  }
-  function rangeDrag(event: PointerEvent) {
-    // Touch keeps native grid scrolling; tapping creates and edge grips resize.
-    if (assignment || event.button !== 0 || event.pointerType === 'touch') return;
-    const start = hitCalendar({ x: event.clientX, y: event.clientY });
-    if (!start) return;
-    const anchor = event.currentTarget as HTMLElement;
-    const range = (point: DragPoint) => {
-      const end = hitCalendar(point, true);
-      if (!end) return null;
-      const first = absoluteMinute(start) <= absoluteMinute(end) ? start : end;
-      const duration = Math.max(15, Math.abs(absoluteMinute(end) - absoluteMinute(start)));
-      try {
-        if (duration > MAX_ACTIVITY_MINUTES) return null;
-        addMinutes(first, duration);
-      } catch {
-        return null;
       }
-      return { start: first, duration };
-    };
-    cancelGesture?.();
-    cancelGesture = pointerDrag(event, {
-      move: (point) => {
-        autoScroll(point);
-        const next = range(point);
-        preview = next
-          ? { kind: 'activity', ...next, label: mealSource?.name ?? 'New activity' }
-          : null;
-        showDrag(
-          point,
-          'Plan this time',
-          next
-            ? `${formatTime(next.start.minute)} / ${next.duration} minutes`
-            : 'Drop onto the calendar'
-        );
-      },
-      drop: (point) => {
-        const next = range(point);
-        clearDrag();
-        if (!next) return;
-        const target =
-          document.querySelector<HTMLElement>(
-            `[data-time-day="${next.start.day}"] .empty-calendar`
-          ) ?? anchor;
-        openBlank(next.start, target, next.duration);
-      },
-      cancel: clearDrag
-    });
-  }
-  function warnBeforeUnload(event: BeforeUnloadEvent) {
-    if (persistence.dirty) {
-      event.preventDefault();
-      event.returnValue = '';
+      const leftoverSources = { ...extras(plan).leftoverSources };
+      const existing = plan.activities.find((a) => a.id === editing);
+      const id = existing?.id ?? uid();
+      if (leftoverId) leftoverSources[id] = { batchId: leftoverId, portions: sourcePortions };
+      else delete leftoverSources[id];
+      const activity: Activity = {
+        ...(existing ?? { id, elapsedMinutes: 30, handsOnMinutes: 0, requiresHome: false }),
+        title: title.trim(),
+        kind: style === 'cook' ? 'cook' : 'meal',
+        notes,
+        start: {
+          day: date,
+          minute:
+            existing && mealSlot(existing, plan) === slot
+              ? existing.start.minute
+              : minuteForSlot(slot)
+        }
+      };
+      const images = { ...extras(plan).images };
+      if (photo) images[id] = photo;
+      else delete images[id];
+      const mealSources = { ...extras(plan).mealSources };
+      if (sourceId) mealSources[id] = { sessionId: sourceId, portions: sourcePortions };
+      else delete mealSources[id];
+      commit(
+        {
+          ...plan,
+          activities: [...plan.activities.filter((a) => a.id !== id), activity],
+          weekly: {
+            ...extras(plan),
+            images,
+            mealSources,
+            mealSections: { ...extras(plan).mealSections, [id]: slot },
+            leftoverSources,
+            shopping: shopWithMeal
+              ? shoppingWith(
+                  mealIngredients.map((i) =>
+                    i.ingredientId && i.unit !== undefined
+                      ? ingredientLine(i)
+                      : i.quantity === 1
+                        ? i.name
+                        : `${i.quantity} ${i.name}`
+                  )
+                )
+              : shopping,
+            styles: { ...extras(plan).styles, [id]: style }
+          }
+        },
+        existing ? i18n.t('planner.mealUpdated') : i18n.t('planner.mealAdded')
+      );
+      if (!error) {
+        if (!days.includes(date)) week = date;
+        tab = 'week';
+      }
+    } else if (modal === 'recipe') {
+      const id = editing || uid();
+      const ingredients = [
+        ...recipeIngredients.filter((row) => row.name.trim()),
+        ...recipePaste
+          .split('\n')
+          .map((line) => line.trim())
+          .filter(Boolean)
+          .map((line) => parseRecipeIngredientLine(line))
+      ];
+      const recipe: Recipe = {
+        id,
+        name: title.trim(),
+        yieldQuantity: portions,
+        durationMinutes: plan.recipes.find((r) => r.id === id)?.durationMinutes ?? 30,
+        ingredients,
+        instructions: notes
+      };
+      commit(
+        {
+          ...plan,
+          recipes: editing
+            ? plan.recipes.map((r) => (r.id === id ? recipe : r))
+            : [...plan.recipes, recipe],
+          weekly: { ...extras(plan), images: imageRecord(id) }
+        },
+        i18n.t('planner.recipeSaved')
+      );
+    } else if (modal === 'leftover') {
+      const id = editing || uid();
+      const old = plan.batches.find((b) => b.id === id);
+      const planned = (old?.quantity ?? 0) - leftoverRemaining(id);
+      if (portions < planned) {
+        error = i18n.t('planner.plannedError', { count: planned });
+        return;
+      }
+      const batch: Batch = {
+        ...(leftoverRecipeId ? { recipeId: leftoverRecipeId } : {}),
+        id,
+        name: title.trim(),
+        quantity: portions,
+        unit: old?.unit ?? 'portions',
+        source: old?.source ?? { kind: 'existing', availableAt: { day: todayDay(), minute: 0 } }
+      };
+      commit(
+        {
+          ...plan,
+          batches: [...plan.batches.filter((b) => b.id !== id), batch],
+          weekly: { ...extras(plan), images: imageRecord(id) }
+        },
+        i18n.t('planner.leftoversUpdated')
+      );
     }
+    if (!error) close(true);
   }
-  function downloadChanges() {
-    const content = sync?.recoveryFile();
-    if (!content) return;
-    const url = URL.createObjectURL(new Blob([content], { type: 'application/json' }));
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = 'meal-prep-recovery.json';
-    document.body.append(link);
-    link.click();
-    link.remove();
-    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  function removeMeal(id: string) {
+    const leftoverSources = { ...extras(plan).leftoverSources };
+    delete leftoverSources[id];
+    const styles = { ...extras(plan).styles };
+    const mealSources = { ...extras(plan).mealSources };
+    const images = { ...extras(plan).images };
+    delete styles[id];
+    delete mealSources[id];
+    delete images[id];
+    commit(
+      {
+        ...deleteActivity(plan, id),
+        weekly: { ...extras(plan), styles, mealSources, leftoverSources, images }
+      },
+      i18n.t('planner.mealRemoved')
+    );
   }
-  async function reloadSaved() {
+  async function remove() {
+    if (modal === 'meal') {
+      removeMeal(editing);
+    } else if (modal === 'recipe')
+      commit(
+        { ...plan, recipes: plan.recipes.filter((r) => r.id !== editing) },
+        i18n.t('planner.recipeRemoved')
+      );
+    else if (!(await removeLeftover(editing))) return;
+    close(true);
+  }
+  function shoppingWith(names: string[]) {
+    const next = [...shopping];
+    for (const name of names.map((n) => n.trim()).filter(Boolean)) {
+      if (!next.some((item) => !item.checked && item.name.toLowerCase() === name.toLowerCase()))
+        next.push({ id: uid(), name, checked: false });
+    }
+    return next;
+  }
+  function addShopping(names: string[]) {
+    return commit(
+      { ...plan, weekly: { ...extras(plan), shopping: shoppingWith(names) } },
+      i18n.t('planner.shoppingListUpdated')
+    );
+  }
+  async function removeLeftover(id: string) {
+    const linked = Object.entries(extras(plan).leftoverSources ?? {})
+      .filter(
+        ([mealId, link]) => link.batchId === id && plan.activities.some((a) => a.id === mealId)
+      )
+      .map(([mealId]) => mealId);
+    const choice = linked.length
+      ? await askChoice(
+          i18n.t('planner.removeLeftovers2'),
+          i18n.t('planner.removeLeftoverQuestion', { count: linked.length }),
+          [
+            { value: 'keep', label: i18n.t('planner.keepMeals') },
+            { value: 'remove', label: i18n.t('planner.removeMealsToo') }
+          ]
+        )
+      : 'keep';
+    if (!choice) return false;
+    let next = plan;
+    if (choice === 'remove') for (const mealId of linked) next = deleteActivity(next, mealId);
+    const weekly = { ...extras(next) };
+    weekly.leftoverSources = Object.fromEntries(
+      Object.entries(weekly.leftoverSources ?? {}).filter(([, link]) => link.batchId !== id)
+    );
+    if (choice === 'remove') {
+      const withoutMeals = <T,>(record: Record<string, T> = {}) =>
+        Object.fromEntries(Object.entries(record).filter(([mealId]) => !linked.includes(mealId)));
+      weekly.styles = withoutMeals(weekly.styles);
+      weekly.images = withoutMeals(weekly.images);
+      weekly.mealSources = withoutMeals(weekly.mealSources);
+    }
+    return commit(
+      {
+        ...next,
+        batches: next.batches.filter((b) => b.id !== id),
+        allocations: next.allocations.filter((a) => a.batchId !== id),
+        weekly
+      },
+      choice === 'remove'
+        ? i18n.t('planner.leftoversAndLinkedMealsRemoved')
+        : i18n.t('planner.leftoversRemoved')
+    );
+  }
+  function duplicateMeal() {
+    if (!dialog?.querySelector('form')?.reportValidity() || photoBusy) return;
+    save();
+    if (error || modal !== null) return;
+    const original = plan.activities.find((a) => a.id === editing);
+    if (!original || sourceId || leftoverId || style !== 'easy') return;
+    const id = uid();
     if (
-      !window.confirm(
-        "Replace this tab's local changes with the saved server plan? Download a copy first if you need to keep them."
+      commit(
+        {
+          ...plan,
+          activities: [...plan.activities, { ...original, id }],
+          weekly: {
+            ...extras(plan),
+            styles: { ...extras(plan).styles, [id]: 'easy' },
+            images: {
+              ...extras(plan).images,
+              ...(plan.weekly?.images?.[editing] ? { [id]: plan.weekly.images[editing] } : {})
+            }
+          }
+        },
+        i18n.t('planner.mealDuplicated')
       )
     )
-      return;
-    inspection = null;
-    selectedId = null;
-    hoveredId = null;
-    cancelPlacement();
-    cancelGesture?.();
-    await sync?.reloadSaved();
-    if (sync?.state.phase === 'conflict' || sync?.state.phase === 'recovery-error')
-      tell('Could not load the saved plan. The local copy has been kept.', true);
+      void close(true);
   }
-  function shortcut(event: KeyboardEvent) {
-    if (event.key === 'Escape') {
-      cancelPlacement();
-      inspection = null;
-      selectedId = null;
-      hoveredId = null;
+  function warn(message: string) {
+    noticeVersion++;
+    notice = message;
+    noticeIsWarning = true;
+  }
+  function touchHandlers(id: string, enabled = true) {
+    const target = (x: number, y: number) => {
+      const element = document.elementFromPoint(x, y);
+      const day = element?.closest<HTMLElement>('[data-agenda-day]')?.dataset.agendaDay;
+      const meal = element?.closest<HTMLElement>('[data-meal-slot]')?.dataset.mealSlot as
+        MealSlot | undefined;
+      return { day, meal };
+    };
+    return {
+      start: () => {
+        if (!enabled) return false;
+        dragged = id;
+        return true;
+      },
+      move: (x: number, y: number) => {
+        const { day, meal } = target(x, y);
+        dropDay =
+          day && !blockedDrop(day, meal)
+            ? id.startsWith('reschedule:')
+              ? `cook:${day}`
+              : meal
+                ? `${day}:${meal}`
+                : ''
+            : '';
+      },
+      end: (x: number, y: number) => {
+        const { day, meal } = target(x, y);
+        if (day && !blockedDrop(day, meal)) {
+          if (id.startsWith('reschedule:')) moveCooking(day);
+          else if (meal) moveMeal(day, meal);
+        }
+        dragged = '';
+        dropDay = '';
+      },
+      cancel: () => {
+        dragged = '';
+        dropDay = '';
+      }
+    };
+  }
+  async function keyboardMove(event: KeyboardEvent, id: string) {
+    if (!event.altKey || !['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(event.key))
+      return;
+    event.preventDefault();
+    const cook = id.startsWith('reschedule:')
+      ? sessions.find((s) => s.id === id.slice(11))
+      : undefined;
+    const meal = plan.activities.find((a) => a.id === id);
+    if (!cook && !meal) return;
+    const changeDay = event.key === 'ArrowLeft' ? -1 : event.key === 'ArrowRight' ? 1 : 0;
+    if (cook && !changeDay) return;
+    const day = addDays(cook?.day ?? meal!.start.day, changeDay);
+    const currentSection = meal ? mealSlot(meal, plan) : '';
+    const sectionIndex = sections.findIndex((s) => s.id === currentSection);
+    const offset = event.key === 'ArrowUp' ? -1 : event.key === 'ArrowDown' ? 1 : 0;
+    const targetSlot = meal
+      ? (sections[Math.max(0, Math.min(sections.length - 1, sectionIndex + offset))]?.id ??
+        currentSection)
+      : undefined;
+    dragged = id;
+    const reason = blockedDrop(day, targetSlot);
+    if (reason) {
+      warn(reason);
+      dragged = '';
+      return;
     }
-    const element = event.target as HTMLElement;
-    if (
-      (event.ctrlKey || event.metaKey) &&
-      event.key.toLowerCase() === 'z' &&
-      !element.closest('input,textarea,select,[contenteditable="true"]')
-    ) {
-      event.preventDefault();
-      undo();
+    if (cook) moveCooking(day);
+    else moveMeal(day, targetSlot!);
+    if (!days.includes(day)) week = day;
+    await tick();
+    document.querySelector<HTMLElement>(`[data-drag-id="${CSS.escape(id)}"]`)?.focus();
+  }
+  function blockedDrop(day: string, slot?: MealSlot): string {
+    if (!dragged) return '';
+    if (dragged.startsWith('reschedule:')) {
+      return servingSlots(plan, dragged.slice(11)).some((s) => s.day < day)
+        ? i18n.t('planner.cookingMustBeBeforeItsPlannedMeals')
+        : '';
     }
+    if (slot && !settings.sections.find((s) => s.id === slot)?.enabled)
+      return i18n.t('planner.thisSectionIsTurnedOff');
+    if (dragged.startsWith('cook:')) {
+      const id = dragged.slice(5);
+      const session = sessions.find((s) => s.id === id);
+      if (session && day < session.day) return i18n.t('planner.beforeTheCookingDay');
+      if (remaining(id) <= 0) return i18n.t('planner.allPortionsArePlanned');
+      if (slot && servingSlots(plan, id).some((s) => s.day === day && s.slot === slot))
+        return i18n.t('planner.alreadyPlannedHere');
+    } else {
+      const source = sessions.find((s) => s.id === plan.weekly?.mealSources?.[dragged]?.sessionId);
+      if (source && day < source.day) return i18n.t('planner.beforeTheCookingDay');
+    }
+    return '';
+  }
+  function moveCooking(day: string) {
+    const id = dragged.slice('reschedule:'.length);
+    const session = sessions.find((s) => s.id === id);
+    if (session && session.day !== day) {
+      const earlierMeals = servingSlots(plan, id).some((slot) => slot.day < day);
+      if (earlierMeals) {
+        warn(i18n.t('planner.cookingMustStayOnOrBeforeIts'));
+        dragged = '';
+        dropDay = '';
+        return;
+      }
+      commit(
+        {
+          ...plan,
+          weekly: {
+            ...extras(plan),
+            sessions: sessions.map((s) => (s.id === id ? { ...s, day } : s))
+          }
+        },
+        i18n.t('planner.cookingMoved')
+      );
+    }
+    dragged = '';
+    dropDay = '';
+  }
+  function moveMeal(day: string, targetSlot: MealSlot) {
+    const reason = blockedDrop(day, targetSlot);
+    if (reason) {
+      warn(reason);
+      dragged = '';
+      dropDay = '';
+      return;
+    }
+    if (dragged.startsWith('reschedule:')) {
+      moveCooking(day);
+      return;
+    }
+
+    if (dragged.startsWith('cook:')) {
+      const session = sessions.find((s) => s.id === dragged.slice(5));
+      if (session) {
+        const available = remaining(session.id);
+        if (day < session.day) warn(i18n.t('planner.chooseAMealOnOrAfterThe'));
+        else if (available <= 0) warn(i18n.t('planner.allPortionsArePlannedEditTheCook'));
+        else if (servingSlots(plan, session.id).some((s) => s.day === day && s.slot === targetSlot))
+          warn(i18n.t('planner.thisCookIsAlreadyInThatMeal'));
+        else {
+          const id = uid();
+          commit(
+            {
+              ...plan,
+              activities: [
+                ...plan.activities,
+                {
+                  id,
+                  title: session.name,
+                  kind: 'meal',
+                  start: { day, minute: minuteForSlot(targetSlot) },
+                  elapsedMinutes: 30,
+                  handsOnMinutes: 0,
+                  requiresHome: false,
+                  notes: session.notes
+                }
+              ],
+              weekly: {
+                ...extras(plan),
+                mealSections: { ...extras(plan).mealSections, [id]: targetSlot },
+                mealSources: {
+                  ...extras(plan).mealSources,
+                  [id]: { sessionId: session.id, portions: Math.min(preferredPortions, available) }
+                },
+                styles: {
+                  ...extras(plan).styles,
+                  [id]: day === session.day ? 'cook' : 'leftovers'
+                },
+                images: {
+                  ...extras(plan).images,
+                  ...(plan.weekly?.images?.[session.id]
+                    ? { [id]: plan.weekly.images[session.id] }
+                    : {})
+                }
+              }
+            },
+            i18n.t('planner.mealPlanned')
+          );
+        }
+      }
+    } else if (dragged.startsWith('leftover:')) {
+      const batch = leftovers.find((b) => b.id === dragged.slice(9));
+      if (batch && leftoverRemaining(batch.id) > 0) {
+        const id = uid();
+        commit(
+          {
+            ...plan,
+            activities: [
+              ...plan.activities,
+              {
+                id,
+                title: batch.name,
+                kind: 'meal',
+                start: { day, minute: minuteForSlot(targetSlot) },
+                elapsedMinutes: 30,
+                handsOnMinutes: 0,
+                requiresHome: false,
+                notes: ''
+              }
+            ],
+            weekly: {
+              ...extras(plan),
+              mealSections: { ...extras(plan).mealSections, [id]: targetSlot },
+              styles: { ...extras(plan).styles, [id]: 'leftovers' },
+              leftoverSources: {
+                ...extras(plan).leftoverSources,
+                [id]: {
+                  batchId: batch.id,
+                  portions: Math.min(preferredPortions, leftoverRemaining(batch.id))
+                }
+              },
+              images: {
+                ...extras(plan).images,
+                ...(plan.weekly?.images?.[batch.id] ? { [id]: plan.weekly.images[batch.id] } : {})
+              }
+            }
+          },
+          i18n.t('planner.leftoversPlanned')
+        );
+      }
+    } else if (dragged) {
+      const source = sessions.find((s) => s.id === plan.weekly?.mealSources?.[dragged]?.sessionId);
+      if (source && day < source.day) {
+        warn(i18n.t('planner.chooseAMealOnOrAfterThe'));
+        dragged = '';
+        dropDay = '';
+        return;
+      }
+      commit(
+        {
+          ...plan,
+          weekly: {
+            ...extras(plan),
+            mealSections: { ...extras(plan).mealSections, [dragged]: targetSlot }
+          },
+          activities: plan.activities.map((a) =>
+            a.id === dragged ? { ...a, start: { day, minute: minuteForSlot(targetSlot) } } : a
+          )
+        },
+        i18n.t('planner.mealMoved')
+      );
+    }
+    dragged = '';
+    dropDay = '';
+  }
+  async function goToday() {
+    week = planningStart(todayDay(), settings);
+    renderedDays = 28;
+    await tick();
+    if (window.innerWidth <= 700)
+      document.getElementById(`day-${todayDay()}`)?.scrollIntoView({ block: 'start' });
+  }
+  function validDayCount(count: number) {
+    return (
+      Number.isSafeInteger(count) &&
+      count > 0 &&
+      count <= Math.floor((Date.UTC(9999, 11, 31) - parseDay(week).getTime()) / 86400000)
+    );
+  }
+  function saveSettings(value: PlanningSettings) {
+    try {
+      validateSettings(value);
+      if (!validDayCount(value.daysShown))
+        throw new Error(i18n.t('planner.chooseARangeEndingBeforeTheYear'));
+      const changeView =
+        value.startDay !== settings.startDay || value.daysShown !== settings.daysShown;
+      if (!commit({ ...plan, weekly: { ...extras(plan), settings: value } })) return false;
+      if (changeView) {
+        week = planningStart(todayDay(), value);
+        visibleDays = value.daysShown;
+        renderedDays = 28;
+      }
+      return true;
+    } catch (cause) {
+      error =
+        cause instanceof Error ? i18n.error(cause.message) : i18n.t('planner.checkYourSettings');
+      return false;
+    }
+  }
+  function download() {
+    const url = URL.createObjectURL(new Blob([sync.recoveryFile()], { type: 'application/json' }));
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'meal-prep-backup.json';
+    a.click();
+    URL.revokeObjectURL(url);
   }
 </script>
 
-<svelte:document
-  onkeydowncapture={(event) => {
-    if (event.key === 'Escape') cancelPlacement();
-  }}
-/>
-<svelte:window
-  onkeydown={shortcut}
-  onpointerdown={outsidePointer}
-  onpointermove={outsideHover}
-  onpointerleave={(event) => hover(null, event)}
-  onbeforeunload={warnBeforeUnload}
-  ononline={() => {
-    if (persistence.phase === 'error') void sync?.retry();
-  }}
-/>
 <svelte:head
-  ><title>Meal prep - Your plan</title><meta
+  ><title>Meal Prep</title><meta
     name="description"
-    content="Plan cooking and meals on a flexible timeline. Give ingredients a use, follow portions, and make room for your week."
+    content="A simple weekly meal plan, recipes you love, and a shared shopping list."
   /></svelte:head
 >
+<svelte:window
+  onbeforeunload={(event) => {
+    if (persistence.dirty) event.preventDefault();
+  }}
+/>
 
-<header class="app-header">
-  <div class="brand"><span class="brand-mark"><Icon name="bowl" size={23} /></span>meal prep.</div>
-  <div class="header-right">
-    <span>Our kitchen / 2 people</span>
-    <ThemeToggle /><span
-      class="save-status"
-      class:unsaved={persistence.dirty ||
-        persistence.phase === 'error' ||
-        persistence.phase === 'recovery-error'}
-      role="status"
-      data-testid="save-status"
-      data-state={persistence.phase}
-      >{persistence.phase === 'saved'
-        ? 'Saved'
-        : persistence.phase === 'loading'
-          ? 'Loading...'
-          : persistence.phase === 'saving'
-            ? 'Saving...'
-            : 'Not saved'}</span
-    >
-  </div>
-</header>
-<main class="main">
-  {#if saveProblem}<div class="save-problem" role="alert">
-      <p>{saveProblem}</p>
-      <div>
-        {#if persistence.phase === 'error'}<button
-            class="secondary-button"
-            onclick={() => void sync?.retry()}>Retry</button
-          >{/if}
-        {#if persistence.dirty || persistence.phase === 'recovery-error'}<button
-            class="secondary-button"
-            onclick={downloadChanges}>Download local changes</button
-          >{/if}
-        {#if persistence.phase === 'conflict' || persistence.phase === 'recovery-error'}<button
-            class="secondary-button"
-            onclick={reloadSaved}>Load saved plan</button
-          >{/if}
+{#if !account}<main class="wp-access">
+    <p role="status">{accountError || i18n.t('planner.openingYourKitchen')}</p>
+    {#if accountError}<button class="wp-secondary" onclick={() => location.reload()}
+        >{i18n.t('planner.tryAgain')}</button
+      >{/if}
+  </main>{:else}
+  <div class="weekly-app">
+    <aside class="wp-sidebar">
+      <a class="wp-brand" href="/" aria-label={i18n.t('planner.mealPrepHome')}
+        ><img
+          class="wp-brand-logo"
+          src="/images/brand/cat-chef.svg"
+          alt=""
+          width="36"
+          height="43"
+        /><span>Meal Prep<span class="wp-brand-dot">.</span></span></a
+      >
+      <p class="wp-eyebrow wp-nav-label">{i18n.t('planner.yourKITCHEN')}</p>
+      <nav aria-label={i18n.t('planner.mainNavigation')}>
+        <button class:active={tab === 'week'} onclick={() => navigateSection('week')}
+          ><Icon name="calendar" />{i18n.t('planner.agenda')}</button
+        >
+        <button class:active={tab === 'recipes'} onclick={() => navigateSection('recipes')}
+          ><Icon name="book" />{i18n.t('planner.recipes')}<span class="wp-nav-count"
+            >{plan.recipes.length}</span
+          ></button
+        >
+        <button class:active={tab === 'shopping'} onclick={() => navigateSection('shopping')}
+          ><Icon name="cart" />{i18n.t(
+            'planner.shopping'
+          )}{#if shopping.filter((i) => !i.checked).length}<span class="wp-nav-count"
+              >{shopping.filter((i) => !i.checked).length}</span
+            >{/if}</button
+        >
+        <button class:active={tab === 'settings'} onclick={() => navigateSection('settings')}
+          ><Icon name="settings" />{i18n.t('planner.settings')}</button
+        >
+      </nav>
+      <div class="wp-sidebar-account" aria-label={i18n.t('planner.signedinUser')}>
+        <span class="wp-account-avatar" aria-hidden="true"
+          >{(account.user.name || account.user.email).slice(0, 1).toUpperCase()}</span
+        >
+        <div>
+          <small>{i18n.t('planner.signedInAs')}</small>
+          <span>{account.user.email}</span>
+          <SignOut compact unsaved={persistence.dirty} />
+        </div>
       </div>
-    </div>{/if}
-  <div class="workspace-heading">
-    <div class="heading-copy">
-      <h1>Your plan</h1>
-      <p>See your days. Give food a place.</p>
-    </div>
-    <div class="heading-actions">
-      <button
-        class="inspector-entry"
-        data-inspector-destination="issues"
-        aria-pressed={inspection?.kind === 'issues' || !!checksSession.originKey}
-        disabled={!persistence.loaded || persistence.phase === 'loading'}
-        onclick={(event) => openIssues(event.currentTarget)}
-        >Checks <span class:has-checks={warnings.length > 0}>{warnings.length || 'All clear'}</span
-        ></button
-      >
-      <button
-        class="inspector-entry"
-        data-inspector-destination="recipes"
-        aria-pressed={inspection?.kind === 'recipes'}
-        disabled={!persistence.loaded || persistence.phase === 'loading'}
-        onclick={(event) => openRecipes(event.currentTarget)}
-        ><Icon name="book" size={14} /> Recipes</button
-      >
-      <button
-        class="text-button"
-        onclick={undo}
-        disabled={!history.length}
-        aria-label="Undo last change"><Icon name="reset" size={14} /> Undo</button
-      >
-    </div>
-  </div>
-  {#if persistence.loaded}
-    <div
-      class="workspace"
-      class:has-inspector={inspection && inspection.kind !== 'quick'}
-      inert={persistence.phase === 'loading'}
-    >
-      <div class="stock-access">
-        <FoodTray
-          {plan}
-          {selectedId}
-          {related}
-          onhover={hover}
-          onleave={leaveHover}
-          onkeyboard={keyboardPreview}
-          onadd={addFood}
-          onselect={inspect}
-          ondrag={foodDrag}
-        />
-      </div>
-      <section
-        class="calendar-shell"
-        aria-label="Your food plan"
-        onfocusout={(event) => {
-          if (
-            !inspection &&
-            !(
-              event.relatedTarget instanceof Node &&
-              event.currentTarget.contains(event.relatedTarget)
-            )
-          )
-            hoveredId = null;
-        }}
-      >
-        <div class="calendar-toolbar">
-          <div class="date-navigation">
-            <button class="icon-button" aria-label="Previous days" onclick={() => shift(-dayCount)}
-              ><Icon name="left" size={17} /></button
-            ><button class="icon-button" aria-label="Next days" onclick={() => shift(dayCount)}
-              ><Icon name="right" size={17} /></button
-            >
-            <h2>{rangeTitle}<span class="year">{startDay.slice(0, 4)}</span></h2>
+    </aside>
+    <main class="wp-main">
+      <header class="wp-topbar">
+        <span
+          class="wp-save"
+          data-testid="save-status"
+          data-state={persistence.phase}
+          aria-live="polite"
+          ><span class:saved={persistence.phase === 'saved'}></span>{persistence.phase === 'saved'
+            ? i18n.t('planner.saved')
+            : persistence.phase === 'saving'
+              ? i18n.t('planner.saving')
+              : persistence.phase === 'loading'
+                ? i18n.t('planner.loading')
+                : i18n.t('planner.needsAttention')}</span
+        >
+      </header>
+      {#if persistence.phase === 'error' || persistence.phase === 'conflict' || persistence.phase === 'recovery-error' || persistence.recoveryUnavailable}
+        <div class="wp-alert" role="alert">
+          <p>
+            {persistence.phase === 'conflict'
+              ? i18n.t('planner.someEditsCouldNotBeSafelyCombined')
+              : persistence.phase === 'recovery-error'
+                ? i18n.t('planner.yourRecoveredEditsCouldNotBeRead')
+                : persistence.recoveryUnavailable
+                  ? i18n.t('planner.browserRecoveryIsUnavailableWaitForSaved')
+                  : persistence.loaded
+                    ? i18n.t('planner.yourEditsHaveNotSavedYetKeep')
+                    : i18n.t('planner.weCouldNotLoadYourPlanPlease')}
+          </p>
+          <div>
+            {#if persistence.phase === 'error'}<button onclick={() => sync.retry()}
+                >{i18n.t('planner.retry')}</button
+              >{/if}<button onclick={download}>{i18n.t('planner.downloadMyEdits')}</button
+            >{#if persistence.phase === 'conflict' || persistence.phase === 'recovery-error'}<button
+                onclick={async () => {
+                  if (
+                    await confirmAction(
+                      i18n.t('planner.discardLocalEditsAndLoadTheHouseholds'),
+                      i18n.t('planner.loadSavedPlan')
+                    )
+                  )
+                    void sync.reloadSaved();
+                }}>{i18n.t('planner.loadSavedPlan')}</button
+              >{/if}
           </div>
-          <div class="calendar-controls">
-            <div class="view-switch" role="group" aria-label="Plan view">
-              <button aria-pressed={view === 'calendar'} onclick={() => setView('calendar')}
-                >Calendar</button
+        </div>
+      {/if}
+      <div class="wp-content">
+        {#if tab === 'week'}
+          <section class="wp-intro wp-week-intro">
+            <div>
+              <h1>{i18n.t('planner.agenda')}</h1>
+            </div>
+          </section>
+
+          {#snippet cookingOverview()}
+            <section
+              id="cooking-plans"
+              class="wp-cooking-section"
+              aria-label={i18n.t('planner.cookingSessions')}
+            >
+              <div class="wp-cooking-heading">
+                <div>
+                  <h2>{i18n.t('planner.cookingPlans')}</h2>
+                </div>
+                <button
+                  class="wp-secondary"
+                  disabled={!loaded || photoBusy}
+                  onclick={() => openCooking()}
+                  ><Icon name="plus" size={16} />{i18n.t('planner.planACook')}</button
+                >
+              </div>
+              {#if !weekSessions.length}<p class="wp-cooking-empty">
+                  {i18n.t('planner.noCookingPlannedInTheseDates')}
+                </p>{/if}
+              <div class="wp-cooking-cards">
+                {#each weekSessions as session}{@const placed = servingSlots(
+                    plan,
+                    session.id
+                  )}{@const assigned = placed.reduce((n, s) => n + s.portions, 0)}
+                  <div
+                    class="wp-food-card wp-cooking-row"
+                    class:wp-fully-planned={assigned >= session.quantity}
+                  >
+                    <button
+                      class="wp-cooking-card wp-food-content"
+                      use:touchDrag={touchHandlers(
+                        `cook:${session.id}`,
+                        assigned < session.quantity
+                      )}
+                      draggable={assigned < session.quantity}
+                      ondragstart={(e) => {
+                        dragged = `cook:${session.id}`;
+                        e.dataTransfer?.setData('text/plain', dragged);
+                      }}
+                      ondragend={() => {
+                        dragged = '';
+                        dropDay = '';
+                      }}
+                      onclick={() => openCooking(undefined, session)}
+                      aria-label={i18n.t('planner.editCook', { name: session.name })}
+                      >{#if photoUrl(plan.weekly?.images?.[session.id])}<img
+                          src={photoUrl(plan.weekly?.images?.[session.id])}
+                          alt=""
+                        />{:else}<span class="wp-cooking-symbol"
+                          ><Icon name="bowl" size={30} /></span
+                        >{/if}<span
+                        ><strong>{session.name}</strong><span class="wp-food-meta">
+                          <span title={i18n.t('planner.cookingDay')}
+                            ><Icon name="calendar" size={13} />{dateLabel(session.day, {
+                              weekday: 'short',
+                              day: 'numeric'
+                            })}</span
+                          >
+                          <span
+                            title={i18n.t('planner.mealsPlanned', { count: placed.length })}
+                            aria-label={i18n.t('planner.mealsPlanned', { count: placed.length })}
+                            ><Icon name="check" size={13} />{i18n.t('planner.placedMeals', {
+                              count: placed.length
+                            })}</span
+                          >
+                          <span
+                            title={i18n.t('planner.portionsAvailable', {
+                              count: Math.max(0, session.quantity - assigned)
+                            })}
+                            aria-label={i18n.t('planner.portionsAvailable', {
+                              count: Math.max(0, session.quantity - assigned)
+                            })}
+                            ><Icon
+                              name={assigned >= session.quantity ? 'check' : 'bowl'}
+                              size={13}
+                            />{assigned >= session.quantity
+                              ? i18n.t('planner.allPlanned')
+                              : i18n.t('planner.portionsLeft', {
+                                  count: session.quantity - assigned
+                                })}</span
+                          >
+                        </span>{#if assigned > session.quantity || placed.some((s) => s.day < session.day)}<em
+                            >{i18n.t('planner.checkMealDatesOrPortions')}</em
+                          >{/if}</span
+                      ></button
+                    >
+                    <div class="wp-food-actions">
+                      <button
+                        class="wp-icon-button wp-remove-leftover"
+                        aria-label={i18n.t('planner.removeCook', { name: session.name })}
+                        title={i18n.t('planner.removeCookingPlan')}
+                        onclick={() => removeCookingSession(session.id)}
+                        ><Icon name="trash" size={17} /></button
+                      >
+                    </div>
+                  </div>{/each}
+              </div>
+            </section>
+          {/snippet}
+          <button
+            class="wp-preparation-toggle"
+            aria-label={i18n.t('planner.planPrepare')}
+            aria-expanded={preparationExpanded}
+            aria-controls="planning-tools"
+            onclick={() => (preparationExpanded = !preparationExpanded)}
+            ><Icon name="bowl" size={18} /><span
+              >{i18n.t('planner.planPrepare')}<small>{preparationSummary}</small></span
+            ><Icon name={preparationExpanded ? 'close' : 'plus'} size={16} /></button
+          >
+          {#if sessions.length || leftovers.length || weeklyMeals.length}<p class="wp-touch-hint">
+              {i18n.t('planner.holdACardToDragItInto')}
+            </p>{/if}
+          <div
+            id="planning-tools"
+            class="wp-planning-workbench"
+            class:wp-preparation-collapsed={!preparationExpanded}
+          >
+            <section id="use-soon" class="wp-panel" aria-label={i18n.t('planner.useSoon')}>
+              <div class="wp-panel-heading">
+                <h2>{i18n.t('planner.useSoon')}</h2>
+              </div>
+              <form
+                class="wp-inline-add"
+                onsubmit={(e) => {
+                  e.preventDefault();
+                  addUseSoon();
+                }}
               >
-              <button aria-pressed={view === 'agenda'} onclick={() => setView('agenda')}
-                >Agenda</button
+                <IngredientInput
+                  value={useSoonText}
+                  library={plan.weekly?.ingredientLibrary ?? []}
+                  label={i18n.t('planner.useSoonIngredient')}
+                  onInput={(value) => (useSoonText = value)}
+                  onSelect={(item) => addUseSoon(item.name)}
+                /><button
+                  aria-label={i18n.t('planner.addUsesoonIngredient')}
+                  disabled={!useSoonText.trim()}><Icon name="plus" /></button
+                >
+              </form>
+              <ul class="wp-use-soon-list">
+                {#each useSoon as item (item.id)}<li>
+                    <span>{item.name}</span><button
+                      class="wp-ingredient-remove"
+                      aria-label={i18n.t('planner.removeIngredientNamed', { name: item.name })}
+                      title={i18n.t('planner.removeIngredient')}
+                      onclick={() => removeUseSoon(item.id)}><Icon name="close" size={13} /></button
+                    >
+                  </li>{:else}<li class="wp-muted">
+                    {i18n.t('planner.addIngredientsForRecipeSuggestions')}
+                  </li>{/each}
+              </ul>
+            </section>
+            <div class="wp-cooking-workspace">
+              {@render cookingOverview()}
+              <div class="wp-ready-strip">
+                <section id="leftovers" class="wp-panel">
+                  <div class="wp-panel-heading">
+                    <div>
+                      <h2>{i18n.t('planner.leftovers')}</h2>
+                    </div>
+                    <button
+                      class="wp-secondary"
+                      disabled={!loaded || photoBusy}
+                      onclick={() => newLeftover()}
+                      ><Icon name="plus" size={16} />{i18n.t('planner.add')}</button
+                    >
+                  </div>
+                  <div class="wp-leftovers">
+                    {#each visibleLeftovers as batch (batch.id)}<div
+                        class="wp-leftover-row wp-food-card"
+                        class:wp-fully-planned={leftoverRemaining(batch.id) === 0}
+                      >
+                        <button
+                          class="wp-leftover-name"
+                          use:touchDrag={touchHandlers(
+                            `leftover:${batch.id}`,
+                            leftoverRemaining(batch.id) > 0
+                          )}
+                          draggable={leftoverRemaining(batch.id) > 0}
+                          aria-label={i18n.t('planner.editLeftoverNamed', { name: batch.name })}
+                          ondragstart={(e) => {
+                            dragged = `leftover:${batch.id}`;
+                            e.dataTransfer?.setData('text/plain', dragged);
+                          }}
+                          ondragend={() => {
+                            dragged = '';
+                            dropDay = '';
+                          }}
+                          onclick={() => newLeftover(batch)}
+                          >{#if photoUrl(plan.weekly?.images?.[batch.id])}<img
+                              class="wp-leftover-photo"
+                              src={photoUrl(plan.weekly?.images?.[batch.id])}
+                              alt=""
+                            />{:else}<span class="wp-food-icon"><Icon name="bowl" size={21} /></span
+                            >{/if}<span
+                            ><strong>{batch.name}</strong><span class="wp-food-meta"
+                              ><span title={i18n.t('planner.availablePortions')}
+                                ><Icon
+                                  name={leftoverRemaining(batch.id) === 0 ? 'check' : 'bowl'}
+                                  size={13}
+                                />{#if leftoverRemaining(batch.id) === 0}{i18n.t(
+                                    'planner.allPlanned'
+                                  )}{:else}{!batch.unit || batch.unit === 'portions'
+                                    ? i18n.t('recipes.portions', {
+                                        count: leftoverRemaining(batch.id)
+                                      })
+                                    : i18n.number(leftoverRemaining(batch.id)) +
+                                      ' ' +
+                                      batch.unit}{/if}</span
+                              ></span
+                            ></span
+                          ></button
+                        >
+                        <div class="wp-food-actions">
+                          <button
+                            class="wp-icon-button wp-remove-leftover"
+                            aria-label={i18n.t('planner.removeLeftoverNamed', { name: batch.name })}
+                            title={i18n.t('planner.removeLeftovers')}
+                            onclick={() => removeLeftover(batch.id)}
+                            ><Icon name="trash" size={17} /></button
+                          >
+                        </div>
+                      </div>{:else}<div class="wp-empty-panel">
+                        <Icon name="bowl" size={28} />
+                        <p>{i18n.t('planner.noLeftoversYet')}</p>
+                      </div>{/each}
+                  </div>
+                </section>
+              </div>
+            </div>
+          </div>
+          <div class="wp-week-toolbar">
+            <div class="wp-week-title">
+              <span
+                >{dateLabel(week, { day: 'numeric', month: 'short' })} – {dateLabel(
+                  addDays(week, visibleDays - 1),
+                  { day: 'numeric', month: 'short', year: 'numeric' }
+                )}</span
               >
             </div>
-            <button
-              class="secondary-button"
-              onclick={() => {
-                go(startOfWeek(todayDay()), 7);
-                void tick().then(() => activeView()?.revealDay(todayDay()));
-              }}>This week</button
-            ><input
-              class="jump-date"
-              type="date"
-              aria-label="Jump to date"
-              min="0001-01-01"
-              max="9999-12-31"
-              value={startDay}
-              onchange={jump}
+            <div class="wp-agenda-navigation">
+              <div class="wp-week-controls">
+                <button
+                  aria-label={i18n.t('planner.previousDay')}
+                  title={i18n.t('planner.moveViewBackOneDay')}
+                  onclick={() => (week = addDays(week, -1))}><Icon name="left" size={18} /></button
+                ><button title={i18n.t('planner.returnToYourPlanningStart')} onclick={goToday}
+                  >{i18n.t('planner.today')}</button
+                ><button
+                  aria-label={i18n.t('planner.nextDay')}
+                  title={i18n.t('planner.moveViewForwardOneDay')}
+                  onclick={() => (week = addDays(week, 1))}><Icon name="right" size={18} /></button
+                >
+              </div>
+            </div>
+          </div>
+          {#if sections.length === 2}<div class="wp-week-labels" aria-hidden="true">
+              <span></span>{#each sections as section}<span>{i18n.section(section)}</span>{/each}
+            </div>{/if}
+          <div
+            class="wp-week"
+            class:wp-custom-sections={sections.length !== 2}
+            id="meal-agenda"
+            style={`--agenda-columns: ${Math.min(visibleDays, 7)}; --meal-rows: ${sections.length + 1}`}
+            aria-label={i18n.t('planner.mealAgenda')}
+          >
+            {#each days as day}
+              <section
+                id={`day-${day}`}
+                data-agenda-day={day}
+                class="wp-day"
+                class:wp-today={day === todayDay()}
+                class:wp-cook-drop={dropDay === `cook:${day}`}
+                class:wp-invalid-drop={!!dragged && !!blockedDrop(day)}
+                title={dragged ? blockedDrop(day) : undefined}
+                ondragover={(e) => {
+                  if (dragged.startsWith('reschedule:')) {
+                    e.preventDefault();
+                    if (blockedDrop(day)) {
+                      if (e.dataTransfer) e.dataTransfer.dropEffect = 'none';
+                      dropDay = '';
+                      return;
+                    }
+                    if (e.dataTransfer) e.dataTransfer.dropEffect = 'move';
+                    dropDay = `cook:${day}`;
+                  }
+                }}
+                ondrop={(e) => {
+                  if (dragged.startsWith('reschedule:')) {
+                    e.preventDefault();
+                    moveCooking(day);
+                  }
+                }}
+                aria-label={dateLabel(day, { weekday: 'long', day: 'numeric', month: 'long' })}
+              >
+                <header class="wp-day-heading">
+                  <span>{dateLabel(day, { weekday: 'short' })}</span><strong
+                    >{parseDay(day).getDate()}</strong
+                  >{#if day === todayDay()}<small>{i18n.t('planner.today')}</small>{/if}
+                  {#each sessions.filter((session) => session.day === day) as session}
+                    <button
+                      class="wp-agenda-cook"
+                      use:touchDrag={touchHandlers(`reschedule:${session.id}`)}
+                      data-drag-id={`reschedule:${session.id}`}
+                      aria-describedby="agenda-keyboard-help"
+                      onkeydown={(event) => keyboardMove(event, `reschedule:${session.id}`)}
+                      draggable="true"
+                      ondragstart={(e) => {
+                        dragged = `reschedule:${session.id}`;
+                        e.dataTransfer?.setData('text/plain', dragged);
+                      }}
+                      ondragend={() => {
+                        dragged = '';
+                        dropDay = '';
+                      }}
+                      title={i18n.t('planner.cookNamed', { name: session.name })}
+                      aria-label={i18n.t('planner.cookingOn', {
+                        day: dateLabel(day, { weekday: 'long' }),
+                        name: session.name
+                      })}
+                      onclick={() => openCooking(undefined, session)}
+                      ><span class="wp-agenda-cook-label"
+                        ><Icon name="bowl" size={14} />{i18n.t('planner.cooking')}</span
+                      ><strong class="wp-agenda-cook-name">{session.name}</strong></button
+                    >
+                  {/each}
+                </header>
+                {#each sections as section}
+                  {@const meal = section.id}
+                  <div
+                    class="wp-slot"
+                    data-meal-slot={meal}
+                    class:wp-drop={dropDay === `${day}:${meal}`}
+                    class:wp-invalid-slot={!!dragged &&
+                      !blockedDrop(day) &&
+                      !!blockedDrop(day, meal)}
+                    aria-disabled={!!dragged && !!blockedDrop(day, meal)}
+                    title={dragged ? blockedDrop(day, meal) : undefined}
+                    role="group"
+                    aria-label={i18n.section(section)}
+                    ondragover={(e) => {
+                      if (dragged) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        if (blockedDrop(day, meal)) {
+                          if (e.dataTransfer) e.dataTransfer.dropEffect = 'none';
+                          dropDay = '';
+                          return;
+                        }
+                        if (e.dataTransfer) e.dataTransfer.dropEffect = 'move';
+                        dropDay = dragged.startsWith('reschedule:')
+                          ? `cook:${day}`
+                          : `${day}:${meal}`;
+                      }
+                    }}
+                    ondrop={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      moveMeal(day, meal);
+                    }}
+                  >
+                    <p>
+                      {i18n.section(section)}
+                      {#if weeklyMeals.some((a) => a.start.day === day && mealSlot(a, plan) === meal)}<button
+                          type="button"
+                          class="wp-icon-button"
+                          disabled={!section.enabled}
+                          aria-label={i18n.t('planner.addSlot', {
+                            section: i18n.section(section).toLowerCase(),
+                            day: dateLabel(day, { weekday: 'long' })
+                          })}
+                          onclick={() => newMeal(day, meal)}><Icon name="plus" size={16} /></button
+                        >{/if}
+                    </p>
+                    {#each weeklyMeals.filter((a) => a.start.day === day && mealSlot(a, plan) === meal) as activity (activity.id)}
+                      {@const kind = mealStyle(plan, activity)}
+                      {@const allocated =
+                        plan.weekly?.mealSources?.[activity.id]?.portions ??
+                        plan.weekly?.leftoverSources?.[activity.id]?.portions}
+                      <div class="wp-meal-card">
+                        <button
+                          class="wp-meal {kind}"
+                          use:touchDrag={touchHandlers(activity.id)}
+                          data-drag-id={activity.id}
+                          aria-describedby="agenda-keyboard-help"
+                          onkeydown={(event) => keyboardMove(event, activity.id)}
+                          draggable="true"
+                          ondragstart={(e) => {
+                            dragged = activity.id;
+                            e.dataTransfer?.setData('text/plain', activity.id);
+                          }}
+                          ondragend={() => {
+                            dragged = '';
+                            dropDay = '';
+                          }}
+                          onclick={() => editMeal(activity)}
+                          aria-label={i18n.t('planner.editMealNamed', { name: activity.title })}
+                          >{#if photoUrl(plan.weekly?.images?.[activity.id])}<img
+                              class="wp-meal-photo"
+                              src={photoUrl(plan.weekly?.images?.[activity.id])}
+                              alt=""
+                              loading="lazy"
+                            />{:else}<span class="wp-meal-symbol"
+                              ><Icon name={icons[kind]} size={22} /></span
+                            >{/if}<strong>{activity.title}</strong
+                          >{#if allocated !== undefined}<span class="wp-meal-portions"
+                              ><Icon name="bowl" size={13} />{i18n.t('recipes.portions', {
+                                count: allocated
+                              })}</span
+                            >{/if}</button
+                        >
+                        <button
+                          class="wp-board-remove"
+                          aria-label={i18n.t('planner.removeMealNamed', { name: activity.title })}
+                          title={i18n.t('planner.removeMeal')}
+                          onclick={() => removeMeal(activity.id)}
+                          ><Icon name="trash" size={14} /></button
+                        >
+                      </div>
+                    {:else}
+                      <button
+                        class="wp-empty-slot"
+                        disabled={!loaded || photoBusy || !section.enabled}
+                        aria-label={i18n.t('planner.addSlot', {
+                          section: i18n.section(section).toLowerCase(),
+                          day: dateLabel(day, { weekday: 'long' })
+                        })}
+                        onclick={() => newMeal(day, meal)}
+                        ><Icon name="plus" size={17} /><span>{i18n.t('planner.addMeal')}</span
+                        ></button
+                      >
+                    {/each}
+                  </div>
+                {/each}
+              </section>
+            {/each}
+          </div>
+          {#if days.length < visibleDays}<button
+              class="wp-secondary"
+              onclick={() => (renderedDays += 28)}>{i18n.t('planner.showMoreDays')}</button
+            >{/if}
+          <div class="wp-week-caption">
+            <p>{i18n.t('planner.dragToPlanOnTouchScreensHold')}</p>
+            <span id="agenda-keyboard-help" class="wp-sr-only"
+              >{i18n.t('planner.toMoveWithAKeyboardHoldAlt')}</span
+            >
+          </div>
+        {:else if tab === 'recipes'}
+          <section class="wp-intro">
+            <div>
+              <h1>{i18n.t('planner.recipes')}</h1>
+            </div>
+            <div class="wp-page-actions">
+              <button
+                class="wp-secondary"
+                disabled={!loaded || photoBusy}
+                onclick={() => (libraryOpen = true)}>{i18n.t('planner.manageIngredients')}</button
+              >
+              <button class="wp-primary" disabled={!loaded || photoBusy} onclick={() => newRecipe()}
+                ><Icon name="plus" size={18} />{i18n.t('planner.addARecipe')}</button
+              >
+            </div>
+          </section>
+          <div class="wp-recipe-search">
+            <IngredientInput
+              value={search}
+              library={plan.weekly?.ingredientLibrary ?? []}
+              label={i18n.t('common.searchRecipes')}
+              placeholder={i18n.t('planner.searchRecipesOrIngredients')}
+              descriptionId="recipe-search-help"
+              newIngredientHint=""
+              onInput={(value) => (search = value)}
+              onSelect={(item) => addRecipeFilter(item.name)}
+              onEnter={() => addRecipeFilter()}
             />
           </div>
-        </div>
-        {#if assignment}<div class="placement-banner">
-            <span>Choose an activity for {quantity(assignment.amount)} {assignment.name}.</span
-            ><button class="secondary-button" onclick={cancelPlacement}>Cancel</button>
-          </div>{/if}
-        {#if mode === 'meal'}<div class="placement-banner">
-            <span
-              ><Icon name="bowl" size={15} />{view === 'calendar'
-                ? 'Click or drag a time'
-                : 'Choose an activity or plan on calendar'} to use {mealSource?.name ??
-                'this food'}.</span
-            ><button
-              class="icon-button tiny"
-              aria-label="Cancel placement"
-              onclick={() => {
-                cancelPlacement();
-                selectedId = null;
-                hoveredId = null;
-              }}><Icon name="close" size={14} /></button
+          <p id="recipe-search-help" class="wp-search-help">
+            {i18n.t('planner.pressEnterToAddAnIngredientFilter')}
+            {#if search || recipeFilters.length || filterUseSoon}<button
+                type="button"
+                class="wp-clear-filters"
+                onclick={() => {
+                  search = '';
+                  recipeFilters = [];
+                  filterUseSoon = false;
+                }}>{i18n.t('planner.clearFilters')}</button
+              >{/if}
+          </p>
+          {#if recipeFilters.length}<div
+              class="wp-recipe-filters"
+              role="group"
+              aria-label={i18n.t('planner.ingredientFilters')}
             >
-          </div>{/if}
-        {#if view === 'agenda'}
-          <Agenda
-            bind:this={agenda}
-            {plan}
-            {days}
-            {selectedId}
-            {related}
-            {warnings}
-            onselect={activateActivity}
-            onblock={(id, element) => inspect('block', id, element)}
-            onplan={planOnCalendar}
-            onadd={(day, element) => openBlank({ day, minute: 720 }, element, undefined, true)}
-            onhover={hover}
-            onleave={leaveHover}
-            onkeyboard={keyboardPreview}
-          />
+              {#each recipeFilters as ingredient}<button
+                  type="button"
+                  class="wp-filter-chip"
+                  aria-label={i18n.t('recipes.removeFilter', { name: ingredient })}
+                  onclick={() =>
+                    (recipeFilters = recipeFilters.filter((item) => item !== ingredient))}
+                  >{ingredient}<Icon name="close" size={13} /></button
+                >{/each}
+            </div>{/if}
+          {#if useSoon.length}<div class="wp-recipe-use-soon">
+              <p>
+                <Icon name="leaf" size={16} /><strong>{i18n.t('planner.useSoon')}</strong><span
+                  >{useSoon.map((item) => item.name).join(', ')}</span
+                >
+              </p>
+              <label class="wp-check-row"
+                ><input type="checkbox" bind:checked={filterUseSoon} />{i18n.t(
+                  'planner.matchingRecipesOnly'
+                )}</label
+              >
+            </div>{/if}
+          <div class="wp-recipe-grid">
+            {#each recipes as recipe}<article class="wp-recipe">
+                <button
+                  class="wp-recipe-open"
+                  aria-label={i18n.t('recipes.editNamed', { name: recipe.name })}
+                  onclick={() => newRecipe(recipe)}
+                  ><div class="wp-recipe-art">
+                    {#if photoUrl(plan.weekly?.images?.[recipe.id])}<img
+                        src={photoUrl(plan.weekly?.images?.[recipe.id])}
+                        alt={recipe.name}
+                        loading="lazy"
+                      />{:else}<Icon name="bowl" size={44} /><span
+                        >{i18n.t('planner.fromYOURRECIPEBOOK')}</span
+                      >{/if}
+                  </div>
+                  <div class="wp-recipe-title">
+                    <h2>{recipe.name}</h2>
+                    <span
+                      ><span class="wp-portions-label"
+                        ><Icon name="bowl" size={13} />{i18n.t('recipes.metadata', {
+                          portions: recipe.yieldQuantity,
+                          ingredients: recipe.ingredients.length
+                        })}</span
+                      ></span
+                    ><Icon name="right" size={18} />
+                  </div>
+                  {#if recipeMatches(recipe, useSoon).length}<p class="wp-match">
+                      {i18n.t('recipes.uses', {
+                        ingredients: recipeMatches(recipe, useSoon)
+                          .map((i) => i.name)
+                          .join(', ')
+                      })}
+                    </p>{/if}
+                  <p>{recipe.instructions || i18n.t('planner.addAFewNotesToMakeNext')}</p>
+                </button>
+                <div class="wp-recipe-actions">
+                  <button class="wp-primary" onclick={() => openCooking(recipe)}
+                    >{i18n.t('planner.planACook')} <Icon name="plus" size={16} /></button
+                  ><button
+                    class="wp-secondary"
+                    disabled={!recipe.ingredients.length}
+                    onclick={() =>
+                      addShopping(
+                        recipe.ingredients.map((i) =>
+                          i.ingredientId && i.unit !== undefined
+                            ? ingredientLine(i)
+                            : i.quantity === 1
+                              ? i.name
+                              : `${i.quantity} ${i.name}`
+                        )
+                      )}>{i18n.t('planner.shopIngredients')}</button
+                  >
+                </div>
+              </article>{:else}<div class="wp-large-empty">
+                <Icon name="book" size={44} />
+                <h2>
+                  {filterUseSoon
+                    ? i18n.t('planner.noMatchingSavedRecipes')
+                    : search || recipeFilters.length
+                      ? i18n.t('planner.noRecipesFound')
+                      : i18n.t('planner.noRecipesYet')}
+                </h2>
+                <p>
+                  {filterUseSoon
+                    ? i18n.t('planner.tryAnotherIngredientOrAddARecipe')
+                    : search || recipeFilters.length
+                      ? i18n.t('planner.tryAnotherSearchOrRemoveAnIngredient')
+                      : i18n.t('planner.saveANameAFewIngredientsAnd')}
+                </p>
+                <button
+                  class="wp-primary"
+                  disabled={!loaded || photoBusy}
+                  onclick={() => newRecipe(undefined, search.trim() || recipeFilters.join(' '))}
+                  >{search.trim() || recipeFilters.length
+                    ? i18n.t('recipes.createNamed', {
+                        name: search.trim() || recipeFilters.join(' ')
+                      })
+                    : filterUseSoon
+                      ? i18n.t('planner.createARecipe')
+                      : i18n.t('planner.saveYourFirstRecipe')}</button
+                >
+              </div>{/each}
+          </div>
+        {:else if tab === 'settings'}
+          <PlanningSettingsPanel value={settings} onchange={saveSettings} />
+          <HouseholdSettings {account} unsaved={persistence.dirty} />
         {:else}
-          <Timeline
-            bind:this={calendar}
+          <ShoppingList
             {plan}
-            {days}
-            {selectedId}
-            {related}
-            focusedAllocationIds={focus.allocationIds}
-            {warnings}
-            {mode}
-            preview={shownPreview}
-            {dropTargetId}
-            onhover={hover}
-            onleave={leaveHover}
-            onkeyboard={keyboardPreview}
-            onselect={activateActivity}
-            onblock={(id, element) => inspect('block', id, element)}
-            onblank={openBlank}
-            onactivitydrag={(event, id, edge) => timeDrag(event, id, 'activity', edge)}
-            onblockdrag={(event, id, edge) => timeDrag(event, id, 'block', edge)}
-            onrangedrag={rangeDrag}
-            onnavigate={navigateEntity}
+            {loaded}
+            {commit}
+            onAdd={addShopping}
+            bind:shopText
+            bind:editingShop
+            bind:editedShopText
           />
         {/if}
-        <div class="calendar-footer">
-          <button class="text-button" onclick={() => shift(-1, dayCount + 1)}
-            ><Icon name="left" size={12} /> Earlier day</button
-          ><span class="relationship-context" aria-live="polite">{focusLabel}</span>
-          <div class="day-range-actions">
-            <button
-              class="text-button"
-              title="Hide the last visible day without removing anything from your plan"
-              disabled={dayCount <= 1}
-              onclick={() => go(startDay, dayCount - 1)}>One fewer day</button
+        {#if notice}<div
+            class="wp-toast"
+            role="status"
+            onpointerenter={() => (noticeHovered = true)}
+            onpointerleave={() => (noticeHovered = false)}
+            onfocusin={() => (noticeFocused = true)}
+            onfocusout={(event) => {
+              if (!event.currentTarget.contains(event.relatedTarget as Node | null))
+                noticeFocused = false;
+            }}
+          >
+            <div
+              class="wp-toast-countdown"
+              aria-hidden="true"
+              style:transform={`scaleX(${noticeRemaining / 6000})`}
+            ></div>
+            <Icon name={noticeIsWarning ? 'info' : 'check'} size={17} /><span>{notice}</span
+            >{#if undoPlan && !noticeIsWarning}<button onclick={undo}
+                >{i18n.t('planner.undo')}</button
+              >{/if}<button
+              aria-label={i18n.t('planner.dismissNotification')}
+              onclick={() => (notice = '')}><Icon name="close" size={15} /></button
             >
-            <button class="text-button" onclick={() => go(startDay, dayCount + 1)}
-              >One more day <Icon name="plus" size={12} /></button
-            >
-          </div>
-        </div>
-      </section>
-    </div>
-    <footer class="app-footer">
-      <div class="legend">
-        <span><i class="status-dot"></i>Cooking</span><span
-          ><i class="status-dot warm"></i>Eating</span
-        ><span>Hatched areas = blocked time</span>
+          </div>{/if}
+        {#if error && !modal}<p class="wp-alert" role="alert">{error}</p>{/if}
       </div>
-      <span>One shared plan. Saved on your server.</span>
-    </footer>
-  {:else if persistence.phase === 'loading'}<p class="loading-plan" role="status">
-      Loading your plan...
-    </p>{/if}
-</main>
+    </main>
+  </div>
 
-{#if inspection}
-  {#key inspection.key}
-    {@const opened = inspection}
-    {#if opened.kind === 'quick'}<QuickCreate
-        start={opened.start}
-        initialKind={opened.initialKind}
-        duration={opened.suppliedDuration}
-        durationProvided={opened.durationProvided}
-        editableStart={opened.editableStart}
-        onstartchange={updateDraftStart}
-        recipes={plan.recipes}
-        anchor={opened.anchor}
-        oncreate={(title, kind, duration, recipe) =>
-          createActivity(
-            title,
-            kind,
-            inspection?.kind === 'quick' ? inspection.start : opened.start,
-            duration,
-            recipe
-          )}
-        onpreview={updateDraft}
-        onclose={() => closeInspector(opened.key)}
-      />
-    {:else if opened.kind === 'issues'}
-      <IssuesPopover
-        {plan}
-        {warnings}
-        bind:session={checksSession}
-        anchor={opened.anchor}
-        onnavigate={navigateCheck}
-        onclose={() => closeInspector(opened.key)}
-      />
-    {:else if opened.kind === 'recipes'}
-      <RecipesPopover
-        recipes={plan.recipes}
-        bind:selectedId={recipeSelectedId}
-        bind:newName={recipeNewName}
-        anchor={opened.anchor}
-        oncreate={addRecipe}
-        onpatch={patchRecipe}
-        onadd={addRecipeIngredient}
-        oningredient={patchRecipeIngredient}
-        onremoveingredient={removeRecipeIngredient}
-        ondelete={deleteRecipe}
-        onclose={() => closeInspector(opened.key)}
-      />
-    {:else if opened.kind === 'activity'}
-      {@const activity = plan.activities.find((item) => item.id === opened.id)}
-      {#if activity}<ActivityPopover
-          {plan}
-          {activity}
-          {warnings}
-          reveal={opened.reveal === 'schedule' ? opened.reveal : undefined}
-          anchor={opened.anchor}
-          onpatch={(patch) => patchActivity(activity.id, patch)}
-          onbatch={patchBatch}
-          onallocation={patchAllocation}
-          oningredient={patchRawUse}
-          onassign={(kind, id, amount) => {
-            const applied = assignFood(kind, id, activity.id, amount);
-            if (applied) selectedId = activity.id;
-            return applied;
-          }}
-          requirements={plan.activityRequirements.filter((item) => item.activityId === activity.id)}
-          onrequirement={patchRequirement}
-          onaddrequirement={(text) => addRequirement(activity.id, text)}
-          onremoverequirement={removeRequirement}
-          onplanmeal={startMeal}
-          oneathere={(id) => assignFood('batch', id, activity.id, 2)}
-          onaddbatch={() => addOutput(activity.id)}
-          onremovebatch={removeOutput}
-          onnavigate={navigateEntity}
-          onpreview={relationHandler(opened.key)}
-          ondelete={() => remove('activity', activity.id)}
-          onclose={() => closeInspector(opened.key)}
-        />{/if}
-    {:else if opened.kind === 'block'}
-      {@const blocker = plan.blockers.find((item) => item.id === opened.id)}
-      {#if blocker}<BlockPopover
-          {blocker}
-          reveal={opened.reveal === 'schedule' ? opened.reveal : undefined}
-          anchor={opened.anchor}
-          onpatch={(patch) => patchBlocker(blocker.id, patch)}
-          ondelete={() => remove('block', blocker.id)}
-          onclose={() => closeInspector(opened.key)}
-        />{/if}
-    {:else}
-      {@const kind = opened.kind}
-      <FoodPopover
-        {plan}
-        {kind}
-        id={opened.id}
-        reveal={opened.reveal === 'availability' ? opened.reveal : undefined}
-        anchor={opened.anchor}
-        lastActivityId={plan.activities.some((item) => item.id === lastActivityId)
-          ? lastActivityId
-          : null}
-        onpatch={(patch) => patchFood(kind, opened.id, patch)}
-        onassign={(activityId, amount) => assignFood(kind, opened.id, activityId, amount)}
-        onchoosecalendar={(amount) => chooseOnCalendar(kind, opened.id, amount)}
-        onsetuse={patchRawUse}
-        onallocation={patchAllocation}
-        onready={(time) =>
-          patchBatch(opened.id, { source: { kind: 'existing', availableAt: time } })}
-        onplanmeal={() => startMeal(opened.id)}
-        onnavigate={navigateEntity}
-        onpreview={relationHandler(opened.key)}
-        ondelete={() => remove(kind, opened.id)}
-        onclose={() => closeInspector(opened.key)}
-      />
-    {/if}
-  {/key}
-{/if}
-{#if dragBubble}<div
-    class="drag-bubble"
-    style:left={`${Math.max(8, Math.min(window.innerWidth - 280, dragBubble.x + 15))}px`}
-    style:top={`${Math.min(window.innerHeight - 70, dragBubble.y + 18)}px`}
-    aria-hidden="true"
-  >
-    {dragBubble.title}<small>{dragBubble.detail}</small>
-  </div>{/if}
-{#if notice}<div class="notice" class:error={notice.error} role={notice.error ? 'alert' : 'status'}>
-    <span>{notice.text}</span><button
-      class="icon-button"
-      aria-label="Dismiss message"
-      onclick={() => (notice = null)}><Icon name="close" size={14} /></button
+  {#if modal}
+    <dialog
+      class="wp-dialog"
+      class:wp-recipe-dialog={modal === 'recipe'}
+      class:wp-food-dialog={modal !== 'meal-choice'}
+      bind:this={dialog}
+      oncancel={(e) => {
+        e.preventDefault();
+        close();
+      }}
+      onclick={(e) => {
+        if (e.target === dialog) {
+          const r = dialog.getBoundingClientRect();
+          if (
+            e.clientX < r.left ||
+            e.clientX > r.right ||
+            e.clientY < r.top ||
+            e.clientY > r.bottom
+          )
+            close();
+        }
+      }}
+      aria-labelledby="wp-dialog-title"
     >
-  </div>{/if}
+      <form
+        onsubmit={(e) => {
+          e.preventDefault();
+          save();
+        }}
+      >
+        {#if modal !== 'meal-choice'}
+          <FoodDialogHeader
+            title={modal === 'recipe'
+              ? editing
+                ? i18n.t('planner.editRecipe')
+                : i18n.t('planner.addRecipe')
+              : modal === 'leftover'
+                ? editing
+                  ? i18n.t('planner.editLeftovers')
+                  : i18n.t('planner.addLeftovers')
+                : editing
+                  ? i18n.t('planner.editMeal')
+                  : i18n.t('planner.addMeal')}
+            titleId="wp-dialog-title"
+            image={dialogPhoto}
+            editable={!photoOpen &&
+              !boundRecipe &&
+              !(modal === 'meal' && (style === 'leftovers' || sourceId || leftoverId))}
+            onPhoto={() => (photoOpen = !photoOpen)}
+          >
+            {#if modal === 'leftover'}
+              <RecipeInput
+                hideLabel
+                value={title}
+                recipes={plan.recipes}
+                library={plan.weekly?.ingredientLibrary}
+                images={plan.weekly?.images}
+                label={i18n.t('common.leftoverName')}
+                onInput={(v) => {
+                  title = v;
+                  if (boundRecipe && v !== boundRecipe.name) leftoverRecipeId = '';
+                }}
+                onSelect={chooseLeftoverRecipe}
+              />
+            {:else if !(modal === 'meal' && !editing && style === 'leftovers' && !title)}
+              <input
+                class="wp-header-name"
+                aria-label={modal === 'recipe'
+                  ? i18n.t('planner.name')
+                  : i18n.t('planner.mealName')}
+                bind:value={title}
+                required
+                maxlength="200"
+                placeholder={modal === 'recipe'
+                  ? i18n.t('planner.recipeName')
+                  : i18n.t('planner.mealName')}
+              />
+            {/if}
+          </FoodDialogHeader>
+          {#if photoOpen && !boundRecipe}<PhotoPicker
+              value={photo}
+              onChange={(value) => (photo = value)}
+              bind:busy={photoBusy}
+              onDone={() => (photoOpen = false)}
+            />{/if}
+        {:else}
+          <header>
+            <div>
+              <!-- svelte-ignore a11y_autofocus -->
+              <h2 id="wp-dialog-title" tabindex="-1" autofocus>{i18n.t('planner.addAMeal')}</h2>
+            </div>
+          </header>
+        {/if}
+        {#if !photoOpen}
+          {#if modal === 'meal-choice'}
+            <p class="wp-modal-help">
+              {dateLabel(date, { weekday: 'long', day: 'numeric', month: 'short' })} · {i18n.section(
+                settings.sections.find((s) => s.id === slot) ?? { id: slot, name: slot }
+              )}
+            </p>
+            <div class="wp-meal-choices">
+              <button
+                type="button"
+                onclick={() => {
+                  close(true);
+                  openCooking(undefined, undefined, date, slot);
+                }}
+                ><Icon name="bowl" /><span
+                  ><strong>{i18n.t('planner.cookSomething')}</strong><small
+                    >{i18n.t('planner.chooseARecipeOrYourOwnDish')}</small
+                  ></span
+                ><Icon name="right" /></button
+              >
+              <button type="button" onclick={() => newMeal(date, slot, '', 'leftovers')}
+                ><Icon name="leaf" /><span
+                  ><strong>{i18n.t('planner.useAPlannedCookOrLeftovers')}</strong><small
+                    >{i18n.t('planner.chooseFoodThenSetYourPortions')}</small
+                  ></span
+                ><Icon name="right" /></button
+              >
+              <button type="button" onclick={() => newMeal(date, slot, '', 'easy')}
+                ><Icon name="sun" /><span
+                  ><strong>{i18n.t('planner.somethingElse')}</strong><small
+                    >{i18n.t('planner.eatingOutASandwichOrAQuick')}</small
+                  ></span
+                ><Icon name="right" /></button
+              >
+            </div>
+          {:else}
+            {#if modal === 'meal' && !editing && style === 'leftovers' && !title}
+              <div class="wp-ready-options">
+                {#each leftovers.filter((b) => leftoverRemaining(b.id) > 0) as batch}<button
+                    type="button"
+                    class="wp-ready-card"
+                    onclick={() => chooseLeftover(batch)}
+                  >
+                    {#if photoUrl(plan.weekly?.images?.[batch.id])}<img
+                        src={photoUrl(plan.weekly?.images?.[batch.id])}
+                        alt=""
+                      />{/if}<span
+                      ><strong>{batch.name}</strong><small
+                        >{i18n.t('planner.portionsReady', {
+                          count: leftoverRemaining(batch.id)
+                        })}</small
+                      ></span
+                    >
+                  </button>{/each}
+                {#each sourceSessions as session}<button
+                    type="button"
+                    class="wp-ready-card"
+                    onclick={() => chooseSource(session.id)}
+                    ><span
+                      ><strong>{session.name}</strong><small
+                        >{i18n.t('planner.preparedOn', {
+                          day: dateLabel(session.day, {
+                            weekday: 'short',
+                            day: 'numeric',
+                            month: 'short'
+                          }),
+                          count: remaining(session.id)
+                        })}</small
+                      ></span
+                    ></button
+                  >{/each}
+                {#if !leftovers.some((b) => leftoverRemaining(b.id) > 0) && !sourceSessions.length}<p
+                  >
+                    {i18n.t('planner.noPreparedFoodListedForThisDay')}
+                  </p>{/if}
+                <button
+                  type="button"
+                  class="wp-secondary"
+                  onclick={() => {
+                    close(true);
+                    newLeftover();
+                  }}>{i18n.t('planner.addLeftoversYouAlreadyHave')}</button
+                >
+              </div>
+            {:else}
+              {#if modal === 'meal'}
+                {#if sourceId || leftoverId}{#if editing}<p class="wp-modal-help">
+                      {i18n.t('planner.source', {
+                        name:
+                          (sourceId
+                            ? sessions.find((s) => s.id === sourceId)?.name
+                            : plan.batches.find((b) => b.id === leftoverId)?.name) ?? ''
+                      })}
+                    </p>{/if}
+                  <div class="wp-field">
+                    {i18n.t('planner.portionsForThisMeal')}<NumberInput
+                      label={i18n.t('planner.portionsForThisMeal')}
+                      value={sourcePortions}
+                      min={0.5}
+                      max={sourceId
+                        ? remaining(sourceId) + (plan.weekly?.mealSources?.[editing]?.portions ?? 0)
+                        : leftoverRemaining(leftoverId) +
+                          (plan.weekly?.leftoverSources?.[editing]?.portions ?? 0)}
+                      step={0.5}
+                      onChange={(value) => {
+                        sourcePortions = value;
+                      }}
+                    />
+                  </div>{/if}
+                <details class="wp-meal-details">
+                  <summary>{i18n.t('planner.notes')}</summary>
+                  <label class="wp-field"
+                    >{i18n.t('planner.mealNotes')}<textarea
+                      bind:value={notes}
+                      rows="4"
+                      maxlength="10000"></textarea></label
+                  >
+                </details>
+              {:else}
+                <div class="wp-field" class:wp-recipe-yield={modal === 'recipe'}>
+                  <span class="wp-portions-label"
+                    ><Icon name="bowl" size={13} />{i18n.t('planner.portions')}</span
+                  ><NumberInput
+                    label={i18n.t('planner.portions')}
+                    value={portions}
+                    min={0.5}
+                    max={999}
+                    step={0.5}
+                    onChange={(value) => {
+                      portions = value;
+                    }}
+                  />
+                  {#if modal === 'recipe' && editing}<button
+                      type="button"
+                      class="wp-secondary wp-recipe-plan"
+                      onclick={async () => {
+                        if (!dialog?.querySelector('form')?.reportValidity() || photoBusy) return;
+                        const id = editing;
+                        save();
+                        if (!error && modal === null)
+                          openCooking(plan.recipes.find((r) => r.id === id));
+                      }}><Icon name="plus" size={16} />{i18n.t('planner.planACook')}</button
+                    >{/if}
+                </div>
+                {#if modal === 'recipe'}<RecipeIngredients
+                    rows={recipeIngredients}
+                    bind:pasted={recipePaste}
+                    library={plan.weekly?.ingredientLibrary ?? []}
+                    onChange={(rows) => (recipeIngredients = rows)}
+                  /><label class="wp-field"
+                    ><span class="wp-recipe-section-label">{i18n.t('planner.method')}</span
+                    ><textarea
+                      use:autoGrow
+                      class="wp-method-input"
+                      bind:value={notes}
+                      rows="4"
+                      maxlength="10000"
+                      placeholder={i18n.t('planner.writeTheStepsInYourOwnWords')}></textarea></label
+                  >{/if}
+              {/if}
+              {#if error}<p class="wp-alert" role="alert">{error}</p>{/if}
+              <footer>
+                {#if modal === 'meal' && editing && style === 'easy' && !sourceId && !leftoverId}<button
+                    type="button"
+                    class="wp-secondary"
+                    onclick={duplicateMeal}>{i18n.t('planner.duplicateMeal')}</button
+                  >{/if}
+                {#if editing}<button type="button" class="wp-delete" onclick={remove}
+                    ><Icon name="trash" size={17} />{i18n.t('planner.remove')}</button
+                  >{/if}
+                <div>
+                  <button type="button" class="wp-secondary" onclick={() => close()}
+                    >{i18n.t('planner.cancel')}</button
+                  >
+                  <button class="wp-primary" disabled={!loaded || photoBusy}
+                    >{i18n.t('planner.save')}</button
+                  >
+                </div>
+              </footer>
+            {/if}
+          {/if}
+          {#if modal === 'meal-choice' || (modal === 'meal' && !editing && style === 'leftovers' && !title)}<footer
+            >
+              <div>
+                <button type="button" class="wp-secondary" onclick={() => close()}
+                  >{i18n.t('planner.cancel')}</button
+                >
+              </div>
+            </footer>{/if}
+        {/if}
+      </form>
+    </dialog>
+  {/if}
+
+  {#if cooking}<CookingEditor
+      {plan}
+      week={cooking.day ?? week}
+      firstMeal={cooking.firstMeal}
+      {preferredPortions}
+      session={cooking.session}
+      recipe={cooking.recipe}
+      onSave={(next, message) => {
+        const saved = commit(next, message);
+
+        return saved;
+      }}
+      onRemove={removeCookingSession}
+      onClose={() => (cooking = null)}
+    />{/if}
+
+  {#if libraryOpen}<IngredientLibrary
+      {plan}
+      onSave={commit}
+      onClose={() => (libraryOpen = false)}
+    />{/if}
+{/if}

@@ -1,8 +1,8 @@
+import { emptyKitchen } from '../planner';
 import { mkdirSync, chmodSync } from 'node:fs';
-import { dirname, resolve } from 'node:path';
+import { dirname, resolve, join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
-import { startOfWeek, todayDay } from '../calendar';
-import { createKitchenPlan, type KitchenPlan } from '../kitchen';
+import type { KitchenPlan } from '../kitchen';
 import {
   PLAN_SCHEMA_VERSION,
   parseKitchenPlan,
@@ -25,8 +25,7 @@ export class PlanStore {
 
   constructor(
     private readonly path: string,
-    private readonly seedFactory: () => KitchenPlan = () =>
-      createKitchenPlan(startOfWeek(todayDay()))
+    private readonly seedFactory: () => KitchenPlan = emptyKitchen
   ) {}
 
   private database(): DatabaseSync {
@@ -162,9 +161,15 @@ export class PlanStore {
   }
 }
 
-let singleton: PlanStore | undefined;
-export function getPlanStore(): PlanStore {
-  return (singleton ??= new PlanStore(
-    resolve(process.env.MEAL_PREP_DB_PATH || 'data/meal-prep.sqlite')
-  ));
+const stores = new Map<string, PlanStore>();
+export function getPlanStore(householdId?: string): PlanStore {
+  const base = resolve(process.env.MEAL_PREP_DB_PATH || 'data/meal-prep.sqlite');
+  if (householdId && !/^[a-f0-9-]{36}$/.test(householdId)) throw new Error('Invalid household ID');
+  const path = householdId ? join(dirname(base), 'households', householdId, 'plan.sqlite') : base;
+  let store = stores.get(path);
+  if (!store) {
+    store = new PlanStore(path, emptyKitchen);
+    stores.set(path, store);
+  }
+  return store;
 }

@@ -1,6 +1,7 @@
+import { createKitchenPlan } from '../../tests/fixtures/legacy-plan';
 import { describe, expect, it } from 'vitest';
 import { MAX_ACTIVITY_MINUTES } from './domain';
-import { createKitchenPlan, validateKitchenPlan, type KitchenPlan } from './kitchen';
+import { type KitchenPlan } from './kitchen';
 import {
   LEGACY_MAX_PLAN_BYTES,
   MAX_PLAN_BYTES,
@@ -73,9 +74,6 @@ describe('plan document validation', () => {
       plan
     });
     expect(parseSaveRequest({ schemaVersion: 2, revision: 2, plan }).plan).toEqual(plan);
-    const codes = validateKitchenPlan(plan).map((warning) => warning.code);
-    for (const code of ['EXCESS_HANDS_ON', 'AWAY_FROM_HOME', 'INSUFFICIENT_COOKABLE'])
-      expect(codes).not.toContain(code);
   });
 
   it('rejects v1 writes, future versions, partial migrations and mixed envelopes', () => {
@@ -196,7 +194,7 @@ describe('plan document validation', () => {
         Object.assign(p.recipes[0], { unit: 'g' });
       },
       (p) => {
-        Object.assign(p.recipes[0].ingredients[0], { unit: '' });
+        Object.assign(p.recipes[0].ingredients[0], { unit: 4 });
       },
       (p) => {
         Object.assign(p.activityRequirements[0], { ingredientId: 'ing-paprika' });
@@ -266,4 +264,13 @@ describe('plan document validation', () => {
     migrated.ingredients.at(-1)!.name += 'x';
     expect(() => parseKitchenPlan(migrated)).toThrow('500 kB');
   });
+});
+
+it('preserves optional recipe links on leftovers', () => {
+  const plan = withRecipe();
+  plan.batches[0].recipeId = 'recipe';
+  expect(parseKitchenPlan(plan).batches[0].recipeId).toBe('recipe');
+  expect(() =>
+    parseKitchenPlan({ ...plan, batches: [{ ...plan.batches[0], recipeId: 12 }] })
+  ).toThrow();
 });
