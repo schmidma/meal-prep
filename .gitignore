@@ -6,6 +6,7 @@ data/
 .svelte-kit/
 build/
 .env
+*.env
 .env.*
 !.env.example
 playwright-report/

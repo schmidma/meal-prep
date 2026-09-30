@@ -1,0 +1,20 @@
+[Unit]
+Description=Meal Prep
+
+[Container]
+# Replace <version> with a release number (without v), or pin an image digest.
+Image=ghcr.io/schmidma/meal-prep:<version>
+ContainerName=meal-prep
+StopTimeout=40
+EnvironmentFile=%h/.config/meal-prep/production.env
+Volume=meal-prep-data.volume:/data
+# Local-only default; adapt this to your reverse proxy's location.
+PublishPort=127.0.0.1:3000:3000
+
+[Service]
+Restart=on-failure
+TimeoutStartSec=300
+TimeoutStopSec=70
+
+[Install]
+WantedBy=default.target

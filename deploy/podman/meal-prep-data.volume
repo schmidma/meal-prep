@@ -1,0 +1,5 @@
+[Unit]
+Description=Meal Prep persistent data
+
+[Volume]
+VolumeName=meal-prep-data

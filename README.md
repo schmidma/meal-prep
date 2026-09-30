@@ -91,6 +91,8 @@ Configure the reverse proxy’s trusted client-address handling so rate limits i
 
 ## Container image
 
+For a persistent systemd service, use the [rootless Podman Quadlet example](deploy/podman/README.md).
+
 Build a production OCI image with Podman:
 
 ```sh

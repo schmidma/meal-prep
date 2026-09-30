@@ -7,6 +7,10 @@ and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.ht
 
 ## [Unreleased]
 
+### Added
+
+- Rootless Podman Quadlet example with a production environment template and deployment guidance independent of proxy software or host setup.
+
 ## [0.1.1] - 2026-09-30
 
 ### Added
