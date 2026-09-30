@@ -1,6 +1,6 @@
 # Meal Prep
 
-Meal Prep 0.1.0 is a self-hosted meal planner for a shared household. Keep recipes for inspiration, plan cooking and meals, use leftovers, and share a shopping list. The interface supports English and German.
+Meal Prep is a self-hosted meal planner for a shared household. Keep recipes for inspiration, plan cooking and meals, use leftovers, and share a shopping list. The interface supports English and German.
 
 ![Desktop agenda with cooking plans, leftovers, and planned meals](docs/images/agenda-desktop.png)
 
@@ -113,9 +113,15 @@ podman run -d --name meal-prep \
 
 Keep the image defaults for `HOST`, `PORT`, and `MEAL_PREP_DB_PATH` unless deliberately changing the container layout. Configure trusted proxy client-address handling for authentication rate limits. The image includes no SMTP server; use your mail provider. Back up the whole data volume with the app stopped before upgrading.
 
-The **OCI image** workflow builds and smoke-tests Linux amd64 images on pull requests and pushes to `main`. Publishing a GitHub release builds and tests its tagged source, checks that its version matches `package.json`, and pushes to `ghcr.io/schmidma/meal-prep` with tags such as `0.1.1` and `sha-<full-commit>`. It does not publish branch builds or a moving `latest` tag. Pin a version or digest when deploying.
+The **OCI image** workflow builds and smoke-tests Linux amd64 images on pull requests and pushes to `main`. Publishing a GitHub release builds and tests its tagged source, checks that its version matches `package.json`, and pushes to `ghcr.io/schmidma/meal-prep` with tags such as `0.1.1` and `sha-<full-commit>`. Pull requests and ordinary branch pushes never publish an image. Pin a release version or digest when deploying.
 
-The existing `v0.1.0` release predates this workflow and has no published image. The first container package is created by a future release. After its first publication, set the GHCR package visibility to public and verify anonymous pulls; a public repository alone does not guarantee public package visibility.
+Version `0.1.1` is the first container release:
+
+```sh
+podman pull ghcr.io/schmidma/meal-prep:0.1.1
+```
+
+For testing upcoming changes, `ghcr.io/schmidma/meal-prep:nightly` follows `main`. It is rebuilt daily at 03:23 UTC after an image smoke test, and can also be published manually through the **OCI image** workflow on `main`. Each nightly build also gets a unique `nightly-<UTC timestamp>-<commit>` tag for reference. Nightly builds may contain unreleased changes; use versioned release images for your household deployment. There is no moving `latest` tag.
 
 ## Development
 

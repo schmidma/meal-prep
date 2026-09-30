@@ -7,10 +7,13 @@ and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.ht
 
 ## [Unreleased]
 
+## [0.1.1] - 2026-09-30
+
 ### Added
 
 - Production OCI image with a non-root runtime and persistent data storage, compatible with Podman and Docker.
-- CI image builds and production smoke tests, with versioned GHCR image publishing for future releases.
+- CI image builds and production smoke tests, with versioned GHCR image publishing for releases.
+- Nightly images from `main`, published daily at 03:23 UTC and available through a manual workflow run.
 
 ## [0.1.0] - 2026-09-30
 
@@ -26,5 +29,6 @@ and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.ht
 - Self-hosting with SQLite storage and SMTP email delivery.
 - Code, documentation, and original bundled artwork under AGPL-3.0-only.
 
-[Unreleased]: https://github.com/schmidma/meal-prep/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/schmidma/meal-prep/compare/v0.1.1...HEAD
+[0.1.1]: https://github.com/schmidma/meal-prep/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/schmidma/meal-prep/releases/tag/v0.1.0
