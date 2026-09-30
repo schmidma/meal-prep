@@ -113,17 +113,21 @@ podman run -d --name meal-prep \
 
 Keep the image defaults for `HOST`, `PORT`, and `MEAL_PREP_DB_PATH` unless deliberately changing the container layout. Configure trusted proxy client-address handling for authentication rate limits. The image includes no SMTP server; use your mail provider. Back up the whole data volume with the app stopped before upgrading.
 
-The **OCI image** workflow runs the shared app checks before building and smoke-testing Linux amd64 images on pull requests, pushes to `main`, manual runs, and releases. Publishing a GitHub release builds and tests its tagged source, checks that its version matches `package.json`, and pushes to `ghcr.io/schmidma/meal-prep` with tags such as `0.1.1` and `sha-<full-commit>`. Pull requests never publish an image. Successful pushes to `main` publish development images. Pin a release version or digest when deploying.
-
-Version `0.1.1` is the first container release:
+Choose a version from [Releases](https://github.com/schmidma/meal-prep/releases), then pull its image. Replace `<version>` with the release number, without the leading `v`:
 
 ```sh
-podman pull ghcr.io/schmidma/meal-prep:0.1.1
+podman pull ghcr.io/schmidma/meal-prep:<version>
 ```
 
-For testing upcoming changes, `ghcr.io/schmidma/meal-prep:main` follows the latest successful build of `main`. Each push runs the app checks and production image smoke test before publishing `main` and `sha-<full-commit>`. There is no daily schedule. The **OCI image** workflow can also be run manually on `main` to rebuild with updated base images.
+Use that image in place of `localhost/meal-prep:local` in the run command above. For household deployments, pin a release version or an image digest.
 
-`main` may contain unreleased changes; use versioned release images for your household deployment. Commit tags identify the source revision, but a manual rebuild can change the base image for that revision. Pin an image digest when you need an exact immutable build. There is no moving `latest` tag.
+Image tags have these meanings:
+
+- **`<version>`**: a published release whose tag matches `package.json`.
+- **`main`**: the latest successful development build from the `main` branch; it may contain unreleased changes.
+- **`sha-<full-commit>`**: a build of a specific source revision. Manual rebuilds can update its base image; pin a digest for an exact immutable build.
+
+The **OCI image** workflow runs the app checks and production image smoke test before publishing Linux amd64 images. Pushes to `main` update the development image; releases publish versioned images. Pull requests are checked without publishing. A manual run on `main` rebuilds with updated base images. There is no daily schedule or moving `latest` tag.
 
 ## Development
 
@@ -143,7 +147,7 @@ For notable user-visible changes, add an entry under **Unreleased** in [CHANGELO
 
 Translations live in `src/lib/i18n/en.json` and `de.json`, organized with feature-prefixed keys. Use `useI18n()` and whole ICU messages with placeholders and plurals. Use locale-aware date and number formatting; do not translate stored household content. To add a language, register its catalog, native name, and formatting locale in `messages.ts`. Tests check matching keys and interpolation arguments. Check new translations on narrow screens as well as desktop.
 
-This release intentionally avoids full pantry inventory and automatic scheduling. Plans are stored as a single size-limited document; meal timing and portion checks support planning, not food-safety decisions.
+Meal Prep intentionally avoids full pantry inventory and automatic scheduling. Plans are stored as a single size-limited document; meal timing and portion checks support planning, not food-safety decisions.
 
 ## License
 
