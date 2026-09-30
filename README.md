@@ -2,6 +2,21 @@
 
 Meal Prep 0.1.0 is a self-hosted meal planner for a shared household. Keep recipes for inspiration, plan cooking and meals, use leftovers, and share a shopping list. The interface supports English and German.
 
+![Desktop agenda with cooking plans, leftovers, and planned meals](docs/images/agenda-desktop.png)
+
+<details>
+<summary>Recipes and mobile planning</summary>
+
+![Recipe collection with use-soon ingredient suggestions](docs/images/recipes-desktop.png)
+
+<img src="docs/images/agenda-phone.png" alt="Mobile agenda with meals and cooking plans" width="390" />
+
+</details>
+
+Screenshots use fictional example data. New households start empty.
+
+See the [changelog](CHANGELOG.md) for release notes.
+
 ## Run locally
 
 Use Node 24 or 26:
@@ -87,6 +102,8 @@ npm run build
 Browser tests use `/usr/bin/chromium` when available. Otherwise install Chromium with `npx playwright install chromium`, or set `PLAYWRIGHT_CHROMIUM_EXECUTABLE`. Tests start their own server on port 4173; keep that port free. Sample plans belong in `tests/fixtures`, never in application startup.
 
 The main page coordinates planning, with focused editors and screens in `src/lib/components`. Shared planning logic lives in `src/lib`, server persistence and authentication in `src/lib/server`, and planner styles in `src/lib/styles`. Saved-data compatibility remains covered by tests even though the original calendar UI has been removed. Final artwork sources and reusable style guidance live in `design`; runtime assets live in `static/images`.
+
+For notable user-visible changes, add an entry under **Unreleased** in [CHANGELOG.md](CHANGELOG.md), grouped as Added, Changed, Deprecated, Removed, Fixed, or Security. At release time, move those entries into a dated version section and update the comparison links.
 
 Translations live in `src/lib/i18n/en.json` and `de.json`, organized with feature-prefixed keys. Use `useI18n()` and whole ICU messages with placeholders and plurals. Use locale-aware date and number formatting; do not translate stored household content. To add a language, register its catalog, native name, and formatting locale in `messages.ts`. Tests check matching keys and interpolation arguments. Check new translations on narrow screens as well as desktop.
 
