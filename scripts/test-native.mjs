@@ -42,7 +42,6 @@ try {
         HOST: '127.0.0.1',
         PORT: '0',
         MEAL_PREP_DB_PATH: join(state, 'meal-prep.sqlite'),
-        BETTER_AUTH_URL: 'https://meals.example.test',
         ORIGIN: 'https://meals.example.test',
         BETTER_AUTH_SECRET: 'native-smoke-test-only-not-a-production-secret',
         MAIL_DELIVERY: 'smtp',
@@ -70,6 +69,10 @@ try {
     assert.equal(response.status, 200);
     assert.match(await response.text(), /Meal Prep/);
     assert.equal((await request('/api/plan')).status, 401);
+    const session = await request('/api/auth/get-session');
+    assert.equal(session.status, 200);
+    assert.equal(await session.json(), null);
+    assert.doesNotMatch(logs, /Database schema mismatch|Could not validate the database schema/);
     assert.equal((await request('/api/dev/inbox')).status, 404);
     assert.equal((await request('/images/brand/cat-chef.svg')).status, 200);
     const db = new DatabaseSync(join(state, 'accounts.sqlite'));

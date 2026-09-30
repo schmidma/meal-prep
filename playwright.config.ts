@@ -32,7 +32,7 @@ export default defineConfig({
     url: 'http://127.0.0.1:4173',
     reuseExistingServer: false,
     env: {
-      BETTER_AUTH_URL: 'http://127.0.0.1:4173',
+      ORIGIN: 'http://127.0.0.1:4173',
       MAIL_DELIVERY: 'test',
       MEAL_PREP_DB_PATH: join(tmpdir(), `meal-prep-e2e-${randomUUID()}`, 'plan.sqlite')
     }

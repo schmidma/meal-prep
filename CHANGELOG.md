@@ -7,6 +7,16 @@ and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.ht
 
 ## [Unreleased]
 
+## [0.1.3] - 2026-09-30
+
+### Changed
+
+- Use `ORIGIN` as the single public URL setting for the app and authentication. Remove `BETTER_AUTH_URL` from existing configuration; keep `ORIGIN` set to the public HTTPS address.
+
+### Fixed
+
+- Complete authentication database migrations before schema validation to avoid misleading missing-table errors on first start.
+
 ## [0.1.2] - 2026-09-30
 
 ### Added
@@ -39,7 +49,8 @@ and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.ht
 - Self-hosting with SQLite storage and SMTP email delivery.
 - Code, documentation, and original bundled artwork under AGPL-3.0-only.
 
-[Unreleased]: https://github.com/schmidma/meal-prep/compare/v0.1.2...HEAD
+[Unreleased]: https://github.com/schmidma/meal-prep/compare/v0.1.3...HEAD
+[0.1.3]: https://github.com/schmidma/meal-prep/compare/v0.1.2...v0.1.3
 [0.1.2]: https://github.com/schmidma/meal-prep/compare/v0.1.1...v0.1.2
 [0.1.1]: https://github.com/schmidma/meal-prep/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/schmidma/meal-prep/releases/tag/v0.1.0

@@ -29,7 +29,7 @@ npm run dev
 
 Open http://127.0.0.1:5174. The development command reads `.env`. With `MAIL_DELIVERY=console`, sign-in codes appear in the server terminal; no email is sent. Codes expire after five minutes. Sign in and create a household, or open an invitation link to join one. New households start empty.
 
-To test from another device, set `BETTER_AUTH_URL` to the address that device will open, then bind the server to that address:
+To test from another device, set `ORIGIN` to the address that device will open, then bind the server to that address:
 
 ```sh
 npm run dev -- --host YOUR_LOCAL_IP
@@ -79,7 +79,7 @@ For a native installation without containers, use a Linux x64 release archive wi
 
 1. Configure an SMTP provider and verify its sender domain.
 2. Set `MAIL_DELIVERY=smtp`, `MAIL_FROM`, and the `SMTP_*` settings from `.env.example`. Port 587 uses STARTTLS; port 465 uses `SMTP_SECURE=true`.
-3. Set `BETTER_AUTH_URL` and `ORIGIN` to the same public HTTPS origin. Set a persistent `BETTER_AUTH_SECRET` with at least 32 random characters.
+3. Set `ORIGIN` to the public HTTPS origin. Set a persistent `BETTER_AUTH_SECRET` with at least 32 random characters.
 4. Build and run behind an HTTPS reverse proxy with persistent private storage:
 
 ```sh

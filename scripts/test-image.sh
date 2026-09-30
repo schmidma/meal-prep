@@ -14,7 +14,6 @@ trap cleanup EXIT
 podman volume create "$volume" >/dev/null
 podman run --detach --name "$name" \
   --volume "$volume:/data" \
-  --env BETTER_AUTH_URL=https://meals.example.test \
   --env ORIGIN=https://meals.example.test \
   --env BETTER_AUTH_SECRET=image-smoke-test-only-not-a-production-secret \
   --env MAIL_DELIVERY=smtp \

@@ -1,6 +1,6 @@
 import { detectLocale, isLocale, translate } from '../i18n/messages';
 import { dev } from '$app/environment';
-import { betterAuth } from 'better-auth';
+import { betterAuth, type BetterAuthOptions } from 'better-auth';
 import { emailOTP } from 'better-auth/plugins';
 import { getMigrations } from 'better-auth/db/migration';
 import { DatabaseSync } from 'node:sqlite';
@@ -21,9 +21,8 @@ export function readDevInbox() {
   for (const [key, value] of inbox) if (now - value.at > 300_000) inbox.delete(key);
   return [...inbox.values()].sort((a, b) => b.at - a.at);
 }
-let instance: ReturnType<typeof makeAuth> | undefined;
-let ready: Promise<void> | undefined;
-function makeAuth() {
+let ready: ReturnType<typeof makeAuth> | undefined;
+async function makeAuth() {
   const directory = dataDirectory();
   mkdirSync(directory, { recursive: true, mode: 0o700 });
   let secret = process.env.BETTER_AUTH_SECRET;
@@ -39,9 +38,9 @@ function makeAuth() {
   }
   if (!secret || secret.length < 32)
     throw new Error('Set BETTER_AUTH_SECRET to at least 32 random characters.');
-  const baseURL = process.env.BETTER_AUTH_URL || (dev ? 'http://127.0.0.1:5174' : undefined);
+  const baseURL = process.env.ORIGIN || (dev ? 'http://127.0.0.1:5174' : undefined);
   if (!baseURL || (!dev && new URL(baseURL).protocol !== 'https:'))
-    throw new Error('Set BETTER_AUTH_URL to the public HTTPS origin.');
+    throw new Error('Set ORIGIN to the public HTTPS origin.');
   if (
     !dev &&
     (!process.env.SMTP_HOST || !process.env.MAIL_FROM || process.env.MAIL_DELIVERY !== 'smtp')
@@ -66,7 +65,7 @@ function makeAuth() {
             ? { user: process.env.SMTP_USER, pass: process.env.SMTP_PASSWORD }
             : undefined
         });
-  return betterAuth({
+  const options = {
     appName: 'Meal Prep',
     database: db,
     baseURL,
@@ -109,11 +108,21 @@ function makeAuth() {
         }
       })
     ]
-  });
+  } satisfies BetterAuthOptions;
+  // Migrate before constructing Better Auth: construction starts schema validation.
+  // Sharing one promise also keeps simultaneous first requests from migrating twice.
+  try {
+    const migration = await getMigrations(options);
+    await migration.runMigrations();
+    const auth = betterAuth(options);
+    await (await auth.$context).checkSchema?.();
+    return auth;
+  } catch (error) {
+    db.close();
+    throw error;
+  }
 }
-export async function getAuth() {
-  instance ??= makeAuth();
-  ready ??= getMigrations(instance.options).then((migration) => migration.runMigrations());
-  await ready;
-  return instance;
+export function getAuth() {
+  ready ??= makeAuth();
+  return ready;
 }

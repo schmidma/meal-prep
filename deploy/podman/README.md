@@ -39,7 +39,7 @@ sudo loginctl enable-linger "$USER"
 
 ## Reverse proxy
 
-Terminate HTTPS at your reverse proxy and forward requests to the app's HTTP port 3000. Set `BETTER_AUTH_URL` and `ORIGIN` to the same external HTTPS origin users open, regardless of how the proxy reaches the app.
+Terminate HTTPS at your reverse proxy and forward requests to the app's HTTP port 3000. Set `ORIGIN` to the external HTTPS origin users open, regardless of how the proxy reaches the app.
 
 Choose a connection method appropriate to your deployment:
 

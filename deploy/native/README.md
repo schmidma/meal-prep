@@ -80,7 +80,7 @@ Configure the proxy before testing sign-in through the HTTPS URL. Confirm email 
 
 ## Reverse proxy
 
-The default listener is `127.0.0.1:3000`, suitable for a proxy on the same host. If the proxy runs elsewhere, set `HOST` to this host's private address in `production.env` and restrict port 3000 to trusted proxies. The proxy forwards HTTP to the app and handles HTTPS for browsers. `BETTER_AUTH_URL` and `ORIGIN` must both use the external HTTPS origin, not the internal forwarding address.
+The default listener is `127.0.0.1:3000`, suitable for a proxy on the same host. If the proxy runs elsewhere, set `HOST` to this host's private address in `production.env` and restrict port 3000 to trusted proxies. The proxy forwards HTTP to the app and handles HTTPS for browsers. `ORIGIN` must use the external HTTPS origin, not the internal forwarding address.
 
 Configure trusted client-IP forwarding for sign-in rate limits. Set `ADDRESS_HEADER` only when the proxy supplies the real address and overwrites any client-supplied value. If using `X-Forwarded-For`, set `XFF_DEPTH` for the actual trusted proxy chain. See the [server's proxy guidance](https://svelte.dev/docs/kit/adapter-node#Environment-variables-ADDRESS_HEADER-and-XFF_DEPTH). Without this configuration, users may share the proxy's rate limit.
 
