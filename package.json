@@ -43,5 +43,6 @@
     "better-auth": "^1.7.6",
     "intl-messageformat": "^12.1.2",
     "nodemailer": "^10.0.12"
-  }
+  },
+  "license": "AGPL-3.0-only"
 }

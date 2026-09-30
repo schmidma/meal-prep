@@ -91,3 +91,11 @@ The main page coordinates planning, with focused editors and screens in `src/lib
 Translations live in `src/lib/i18n/en.json` and `de.json`, organized with feature-prefixed keys. Use `useI18n()` and whole ICU messages with placeholders and plurals. Use locale-aware date and number formatting; do not translate stored household content. To add a language, register its catalog, native name, and formatting locale in `messages.ts`. Tests check matching keys and interpolation arguments. Check new translations on narrow screens as well as desktop.
 
 This release intentionally avoids full pantry inventory and automatic scheduling. Plans are stored as a single size-limited document; meal timing and portion checks support planning, not food-safety decisions.
+
+## License
+
+Copyright © 2026 Maximilian Schmidt.
+
+Meal Prep is licensed under the [GNU Affero General Public License version 3 only](LICENSE) (`AGPL-3.0-only`). This covers the project's code, documentation, and bundled original artwork, including the cat-chef logo, food images, and illustrations. Third-party dependencies, fonts, and icons retain their respective licenses. User-created household content is not licensed by this repository.
+
+Commercial use is allowed. If you run a modified version as a network service, you must offer its corresponding source code to users under the AGPLv3; see the license for the full terms.
