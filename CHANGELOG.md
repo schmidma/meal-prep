@@ -7,6 +7,8 @@ and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.ht
 
 ## [Unreleased]
 
+## [0.1.2] - 2026-09-30
+
 ### Added
 
 - Downloadable Linux x64 release archives with runtime dependencies and SHA-256 checksums for native installations.
@@ -37,6 +39,7 @@ and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.ht
 - Self-hosting with SQLite storage and SMTP email delivery.
 - Code, documentation, and original bundled artwork under AGPL-3.0-only.
 
-[Unreleased]: https://github.com/schmidma/meal-prep/compare/v0.1.1...HEAD
+[Unreleased]: https://github.com/schmidma/meal-prep/compare/v0.1.2...HEAD
+[0.1.2]: https://github.com/schmidma/meal-prep/compare/v0.1.1...v0.1.2
 [0.1.1]: https://github.com/schmidma/meal-prep/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/schmidma/meal-prep/releases/tag/v0.1.0
