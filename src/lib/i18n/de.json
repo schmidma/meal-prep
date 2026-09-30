@@ -424,5 +424,9 @@
   "errors.tooManyAttempts": "Zu viele Versuche. Warte kurz und versuche es erneut.",
   "errors.invalidEmail": "Gib eine gültige E-Mail-Adresse ein.",
   "auth.emailSubject": "Dein Anmeldecode für Meal Prep",
-  "auth.emailBody": "Dein Anmeldecode für Meal Prep lautet {code}.\n\nEr ist 5 Minuten gültig. Falls du ihn nicht angefordert hast, kannst du diese E-Mail ignorieren."
+  "auth.emailBody": "Dein Anmeldecode für Meal Prep lautet {code}.\n\nEr ist 5 Minuten gültig. Falls du ihn nicht angefordert hast, kannst du diese E-Mail ignorieren.",
+  "ingredient-library.remove": "Löschen",
+  "ingredient-library.removeTitle": "Zutat löschen?",
+  "ingredient-library.removePrompt": "„{name}“ und die zugehörigen alternativen Namen löschen?",
+  "ingredient-library.removeInUse": "Wird in Rezepten, „Bald verbrauchen“ oder der Einkaufsliste verwendet. Entferne zuerst diese Verwendungen oder führe die Zutat mit einer anderen zusammen."
 }

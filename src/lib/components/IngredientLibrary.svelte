@@ -5,6 +5,8 @@
   import { onMount } from 'svelte';
   import type { KitchenPlan } from '$lib/kitchen';
   import {
+    ingredientInUse,
+    removeIngredient,
     updateIngredient,
     mergeIngredients,
     ensureIngredient,
@@ -159,14 +161,44 @@
         >
       </details>
       {#if error}<p role="alert" class="wp-alert">{error}</p>{/if}
+      {#if ingredientInUse(plan, selected)}
+        <p class="wp-modal-help">{i18n.t('ingredient-library.removeInUse')}</p>
+      {/if}
       <footer>
         <button
           type="button"
-          class="wp-secondary"
+          class="wp-secondary wp-danger"
+          disabled={ingredientInUse(plan, selected)}
           onclick={async () => {
-            if (await canLeave()) selected = '';
-          }}>{i18n.t('planner.cancel')}</button
-        ><button class="wp-primary">{i18n.t('planner.save')}</button>
+            if (
+              !(await confirmAction(
+                i18n.t('ingredient-library.removePrompt', {
+                  name: library.find((item) => item.id === selected)?.name ?? name
+                }),
+                i18n.t('ingredient-library.remove'),
+                i18n.t('ingredient-library.removeTitle')
+              ))
+            )
+              return;
+            if (ingredientInUse(plan, selected)) {
+              error = i18n.t('ingredient-library.removeInUse');
+              return;
+            }
+            if (onSave(removeIngredient(plan, selected), i18n.t('planner.ingredientRemoved'))) {
+              selected = '';
+              error = '';
+            }
+          }}><Icon name="trash" size={16} />{i18n.t('ingredient-library.remove')}</button
+        >
+        <div>
+          <button
+            type="button"
+            class="wp-secondary"
+            onclick={async () => {
+              if (await canLeave()) selected = '';
+            }}>{i18n.t('planner.cancel')}</button
+          ><button class="wp-primary">{i18n.t('planner.save')}</button>
+        </div>
       </footer>
     {:else}
       <input

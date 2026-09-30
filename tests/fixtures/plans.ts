@@ -1,7 +1,26 @@
+import type { IngredientDefinition } from '../../src/lib/ingredient-library';
 import type { KitchenPlan, Recipe } from '../../src/lib/kitchen';
 import { emptyKitchen } from '../../src/lib/planner';
 import { addDays } from '../../src/lib/calendar';
 import { recipeNotes, saveCooking } from '../../src/lib/cooking';
+
+const seeds: [string, string[]][] = [
+  ['Chickpeas', ['chickpea', 'garbanzo beans', 'garbanzo']],
+  ['Courgette', ['zucchini', 'courgettes']],
+  ['Aubergine', ['eggplant', 'aubergines']],
+  ['Bell pepper', ['bell peppers', 'capsicum', 'sweet pepper']],
+  ['Onion', ['onions']],
+  ['Tomato', ['tomatoes']],
+  ['Lemon', ['lemons']],
+  ['Sweet potato', ['sweet potatoes']],
+  ['Spinach', []]
+];
+export const starterIngredients = (): IngredientDefinition[] =>
+  seeds.map(([name, aliases], i) => ({
+    id: `ingredient-common-${i}`,
+    name: name.toLowerCase(),
+    aliases: [...aliases]
+  }));
 
 export function createPlaygroundRecipes(): Recipe[] {
   const recipe = (
@@ -88,6 +107,7 @@ export function createPlaygroundPlan(week: string): KitchenPlan {
     ...emptyKitchen(),
     recipes,
     weekly: {
+      ingredientLibrary: starterIngredients(),
       shopping: [
         { id: 'shop-lemons', name: 'Lemons', checked: false },
         { id: 'shop-bread', name: 'Sourdough', checked: false },
@@ -164,6 +184,7 @@ export function createStarterPlan(): KitchenPlan {
     ...emptyKitchen(),
     recipes,
     weekly: {
+      ingredientLibrary: starterIngredients(),
       shopping: [],
       styles: {},
       useSoon: [],

@@ -7,23 +7,6 @@ export const ingredientKey = (name: string) =>
     .trim()
     .toLocaleLowerCase()
     .replace(/[\s\p{Dash_Punctuation}]+/gu, '');
-const seeds: [string, string[]][] = [
-  ['Chickpeas', ['chickpea', 'garbanzo beans', 'garbanzo']],
-  ['Courgette', ['zucchini', 'courgettes']],
-  ['Aubergine', ['eggplant', 'aubergines']],
-  ['Bell pepper', ['bell peppers', 'capsicum', 'sweet pepper']],
-  ['Onion', ['onions']],
-  ['Tomato', ['tomatoes']],
-  ['Lemon', ['lemons']],
-  ['Sweet potato', ['sweet potatoes']],
-  ['Spinach', []]
-];
-export const starterIngredients = (): IngredientDefinition[] =>
-  seeds.map(([name, aliases], i) => ({
-    id: `ingredient-common-${i}`,
-    name: name.toLowerCase(),
-    aliases: [...aliases]
-  }));
 export function findIngredient(library: IngredientDefinition[], name: string) {
   const key = ingredientKey(name);
   return library.find((i) => [i.name, ...i.aliases].some((n) => ingredientKey(n) === key));
@@ -127,7 +110,7 @@ export function linkIngredients(input: KitchenPlan): KitchenPlan {
       );
     if (duplicate) return mergeIngredients(input, existing[i].id, duplicate.id);
   }
-  const library = (input.weekly?.ingredientLibrary ?? starterIngredients()).map((i) => ({
+  const library = (input.weekly?.ingredientLibrary ?? []).map((i) => ({
     ...i,
     aliases: [...i.aliases]
   }));
@@ -278,4 +261,25 @@ export function recipeIngredientSearch(
   return (
     !key || ingredientKey(recipe.name).includes(key) || recipeHasIngredients(recipe, library, [key])
   );
+}
+
+export function ingredientInUse(plan: KitchenPlan, id: string): boolean {
+  return (
+    plan.recipes.some((recipe) => recipe.ingredients.some((row) => row.ingredientId === id)) ||
+    (plan.weekly?.useSoon ?? []).some((row) => row.ingredientId === id) ||
+    (plan.weekly?.shopping ?? []).some((row) => row.ingredientId === id)
+  );
+}
+
+export function removeIngredient(plan: KitchenPlan, id: string): KitchenPlan {
+  if (ingredientInUse(plan, id)) throw new Error('This ingredient is still in use.');
+  return {
+    ...plan,
+    weekly: {
+      shopping: [],
+      styles: {},
+      ...plan.weekly,
+      ingredientLibrary: (plan.weekly?.ingredientLibrary ?? []).filter((item) => item.id !== id)
+    }
+  };
 }

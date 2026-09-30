@@ -424,5 +424,9 @@
   "errors.tooManyAttempts": "Too many attempts",
   "errors.invalidEmail": "Invalid email",
   "auth.emailSubject": "Your Meal Prep sign-in code",
-  "auth.emailBody": "Your Meal Prep sign-in code is {code}.\n\nIt expires in 5 minutes. If you did not request it, you can ignore this email."
+  "auth.emailBody": "Your Meal Prep sign-in code is {code}.\n\nIt expires in 5 minutes. If you did not request it, you can ignore this email.",
+  "ingredient-library.remove": "Delete",
+  "ingredient-library.removeTitle": "Delete ingredient?",
+  "ingredient-library.removePrompt": "Delete “{name}” and its aliases?",
+  "ingredient-library.removeInUse": "Used in recipes, Use soon, or shopping. Remove those references first, or merge with another ingredient."
 }

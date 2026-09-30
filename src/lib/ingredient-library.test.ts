@@ -1,6 +1,9 @@
+import { emptyKitchen } from './planner';
 import { describe, it, expect } from 'vitest';
 import { createStarterPlan } from '../../tests/fixtures/plans';
 import {
+  removeIngredient,
+  ingredientInUse,
   linkIngredients,
   findIngredient,
   updateIngredient,
@@ -157,4 +160,43 @@ it('recognizes German quantity units without translating ingredient content', ()
     unit: 'EL',
     name: 'Olivenöl'
   });
+});
+
+it('starts empty and learns only ingredients supplied by the household', () => {
+  const empty = linkIngredients(emptyKitchen());
+  expect(empty.weekly!.ingredientLibrary).toEqual([]);
+  expect(linkIngredients(empty)).toEqual(empty);
+  empty.weekly!.useSoon = [{ id: 'soon', name: 'Paprika' }];
+  const populated = linkIngredients(empty);
+  expect(populated.weekly!.ingredientLibrary!.map((item) => item.name)).toEqual(['Paprika']);
+});
+
+it('deletes unused ingredients and aliases without recreating them on reload', () => {
+  const plan = linkIngredients(emptyKitchen());
+  plan.weekly!.ingredientLibrary = [{ id: 'unused', name: 'Courgette', aliases: ['zucchini'] }];
+  const deleted = removeIngredient(plan, 'unused');
+  expect(linkIngredients(parseKitchenPlan(deleted)).weekly!.ingredientLibrary).toEqual([]);
+  expect(plan.weekly!.ingredientLibrary).toHaveLength(1);
+});
+
+it.each(['recipe', 'useSoon', 'shopping'])('protects ingredients used by %s', (source) => {
+  const plan = linkIngredients(emptyKitchen());
+  plan.weekly!.ingredientLibrary = [{ id: 'used', name: 'Paprika', aliases: [] }];
+  if (source === 'recipe')
+    plan.recipes = [
+      {
+        id: 'recipe',
+        name: 'Soup',
+        yieldQuantity: 2,
+        durationMinutes: 20,
+        ingredients: [{ id: 'row', name: 'Paprika', quantity: 1, ingredientId: 'used' }],
+        instructions: ''
+      }
+    ];
+  if (source === 'useSoon')
+    plan.weekly!.useSoon = [{ id: 'row', name: 'Paprika', ingredientId: 'used' }];
+  if (source === 'shopping')
+    plan.weekly!.shopping = [{ id: 'row', name: 'Paprika', checked: false, ingredientId: 'used' }];
+  expect(ingredientInUse(plan, 'used')).toBe(true);
+  expect(() => removeIngredient(plan, 'used')).toThrow('still in use');
 });
