@@ -75,6 +75,8 @@ For a backup, wait for saves to finish, stop the app, and copy the **whole stora
 
 ## Hosting and email
 
+For a native installation without containers, use a Linux x64 release archive with bundled runtime dependencies and follow the [systemd deployment guide](deploy/native/README.md). Node.js is installed separately.
+
 1. Configure an SMTP provider and verify its sender domain.
 2. Set `MAIL_DELIVERY=smtp`, `MAIL_FROM`, and the `SMTP_*` settings from `.env.example`. Port 587 uses STARTTLS; port 465 uses `SMTP_SECURE=true`.
 3. Set `BETTER_AUTH_URL` and `ORIGIN` to the same public HTTPS origin. Set a persistent `BETTER_AUTH_SECRET` with at least 32 random characters.
@@ -129,7 +131,7 @@ Image tags have these meanings:
 - **`main`**: the latest successful development build from the `main` branch; it may contain unreleased changes.
 - **`sha-<full-commit>`**: a build of a specific source revision. Manual rebuilds can update its base image; pin a digest for an exact immutable build.
 
-The **OCI image** workflow runs the app checks and production image smoke test before publishing Linux amd64 images. Pushes to `main` update the development image; releases publish versioned images. Pull requests are checked without publishing. A manual run on `main` rebuilds with updated base images. There is no daily schedule or moving `latest` tag.
+The **Build and publish** workflow runs the app checks and production image smoke test before publishing Linux amd64 images. Pushes to `main` update the development image; releases publish versioned images. Pull requests are checked without publishing. A manual run on `main` rebuilds with updated base images. There is no daily schedule or moving `latest` tag.
 
 ## Development
 

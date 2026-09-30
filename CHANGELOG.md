@@ -9,6 +9,10 @@ and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.ht
 
 ### Added
 
+- Downloadable Linux x64 release archives with runtime dependencies and SHA-256 checksums for native installations.
+
+- Native systemd deployment example with a dedicated service account, versioned releases, persistent data, and installation and update guidance.
+
 - Rootless Podman Quadlet example with a production environment template and deployment guidance independent of proxy software or host setup.
 
 ## [0.1.1] - 2026-09-30

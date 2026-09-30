@@ -1,0 +1,29 @@
+[Unit]
+Description=Meal Prep
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=simple
+User=meal-prep
+Group=meal-prep
+WorkingDirectory=/opt/meal-prep/current
+ExecStart=/usr/bin/node build
+Environment=NODE_ENV=production
+Environment=HOST=127.0.0.1
+Environment=PORT=3000
+Environment=MEAL_PREP_DB_PATH=/var/lib/meal-prep/meal-prep.sqlite
+EnvironmentFile=/etc/meal-prep/production.env
+StateDirectory=meal-prep
+StateDirectoryMode=0700
+UMask=0077
+Restart=on-failure
+RestartSec=5
+TimeoutStopSec=40
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectHome=true
+ProtectSystem=strict
+
+[Install]
+WantedBy=multi-user.target
