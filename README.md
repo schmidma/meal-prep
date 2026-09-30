@@ -113,7 +113,7 @@ podman run -d --name meal-prep \
 
 Keep the image defaults for `HOST`, `PORT`, and `MEAL_PREP_DB_PATH` unless deliberately changing the container layout. Configure trusted proxy client-address handling for authentication rate limits. The image includes no SMTP server; use your mail provider. Back up the whole data volume with the app stopped before upgrading.
 
-The **OCI image** workflow builds and smoke-tests Linux amd64 images on pull requests and pushes to `main`. Publishing a GitHub release builds and tests its tagged source, checks that its version matches `package.json`, and pushes to `ghcr.io/schmidma/meal-prep` with tags such as `0.1.1` and `sha-<full-commit>`. Pull requests and ordinary branch pushes never publish an image. Pin a release version or digest when deploying.
+The **OCI image** workflow runs the shared app checks before building and smoke-testing Linux amd64 images on pull requests, pushes to `main`, manual runs, and releases. Publishing a GitHub release builds and tests its tagged source, checks that its version matches `package.json`, and pushes to `ghcr.io/schmidma/meal-prep` with tags such as `0.1.1` and `sha-<full-commit>`. Pull requests never publish an image. Successful pushes to `main` publish development images. Pin a release version or digest when deploying.
 
 Version `0.1.1` is the first container release:
 
@@ -121,7 +121,9 @@ Version `0.1.1` is the first container release:
 podman pull ghcr.io/schmidma/meal-prep:0.1.1
 ```
 
-For testing upcoming changes, `ghcr.io/schmidma/meal-prep:nightly` follows `main`. It is rebuilt daily at 03:23 UTC after an image smoke test, and can also be published manually through the **OCI image** workflow on `main`. Each nightly build also gets a unique `nightly-<UTC timestamp>-<commit>` tag for reference. Nightly builds may contain unreleased changes; use versioned release images for your household deployment. There is no moving `latest` tag.
+For testing upcoming changes, `ghcr.io/schmidma/meal-prep:main` follows the latest successful build of `main`. Each push runs the app checks and production image smoke test before publishing `main` and `sha-<full-commit>`. There is no daily schedule. The **OCI image** workflow can also be run manually on `main` to rebuild with updated base images.
+
+`main` may contain unreleased changes; use versioned release images for your household deployment. Commit tags identify the source revision, but a manual rebuild can change the base image for that revision. Pin an image digest when you need an exact immutable build. There is no moving `latest` tag.
 
 ## Development
 

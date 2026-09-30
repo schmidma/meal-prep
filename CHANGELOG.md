@@ -13,7 +13,7 @@ and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.ht
 
 - Production OCI image with a non-root runtime and persistent data storage, compatible with Podman and Docker.
 - CI image builds and production smoke tests, with versioned GHCR image publishing for releases.
-- Nightly images from `main`, published daily at 03:23 UTC and available through a manual workflow run.
+- Development images tagged `main` and by commit, published after successful app checks and image smoke tests on each push to `main`, with a manual rebuild option.
 
 ## [0.1.0] - 2026-09-30
 
