@@ -7,6 +7,11 @@ and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.ht
 
 ## [Unreleased]
 
+### Added
+
+- Production OCI image with a non-root runtime and persistent data storage, compatible with Podman and Docker.
+- CI image builds and production smoke tests, with versioned GHCR image publishing for future releases.
+
 ## [0.1.0] - 2026-09-30
 
 ### Added

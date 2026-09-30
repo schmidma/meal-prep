@@ -1,0 +1,77 @@
+name: OCI image
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  release:
+    types: [published]
+
+permissions:
+  contents: read
+
+jobs:
+  image:
+    name: Build and test OCI image
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - name: Install Podman
+        run: |
+          if ! command -v podman >/dev/null; then
+            sudo apt-get update
+            sudo apt-get install -y podman
+          fi
+      - name: Determine image metadata
+        id: metadata
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+          REPOSITORY: ${{ github.repository }}
+        run: |
+          revision=$(git rev-parse HEAD)
+          version="dev-${revision:0:12}"
+          if [[ "$EVENT_NAME" == release ]]; then
+            if [[ ! "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]]; then
+              echo 'Release tag must be vMAJOR.MINOR.PATCH with an optional prerelease suffix.' >&2
+              exit 1
+            fi
+            version=${RELEASE_TAG#v}
+            package_version=$(python3 -c 'import json; print(json.load(open("package.json"))["version"])')
+            [[ "$version" == "$package_version" ]] || { echo 'Release and package versions differ.' >&2; exit 1; }
+          fi
+          {
+            echo "version=$version"
+            echo "revision=$revision"
+            echo "image=ghcr.io/${REPOSITORY,,}"
+          } >> "$GITHUB_OUTPUT"
+      - name: Build production image
+        env:
+          VERSION: ${{ steps.metadata.outputs.version }}
+          REVISION: ${{ steps.metadata.outputs.revision }}
+        run: >-
+          podman build --format oci
+          --build-arg "VERSION=$VERSION" --build-arg "REVISION=$REVISION"
+          --tag localhost/meal-prep:ci --file Containerfile .
+      - name: Smoke-test production image
+        run: bash scripts/test-image.sh localhost/meal-prep:ci
+      - name: Publish release image
+        if: github.event_name == 'release'
+        env:
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REGISTRY_USER: ${{ github.actor }}
+          IMAGE: ${{ steps.metadata.outputs.image }}
+          VERSION: ${{ steps.metadata.outputs.version }}
+          REVISION: ${{ steps.metadata.outputs.revision }}
+          REGISTRY_AUTH_FILE: ${{ runner.temp }}/meal-prep-registry-auth.json
+        run: |
+          trap 'rm -f "$REGISTRY_AUTH_FILE"' EXIT
+          printf '%s' "$GHCR_TOKEN" | podman login --username "$REGISTRY_USER" --password-stdin ghcr.io
+          podman push localhost/meal-prep:ci "docker://$IMAGE:$VERSION"
+          podman push localhost/meal-prep:ci "docker://$IMAGE:sha-$REVISION"

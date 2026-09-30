@@ -89,6 +89,34 @@ Production requires HTTPS configuration, an authentication secret, and SMTP; it 
 
 Configure the reverse proxy’s trusted client-address handling so rate limits identify the actual client. See [adapter-node configuration](https://svelte.dev/docs/kit/adapter-node#Environment-variables-ADDRESS_HEADER-and-XFF_DEPTH).
 
+## Container image
+
+Build a production OCI image with Podman:
+
+```sh
+podman build --format oci -t localhost/meal-prep:local -f Containerfile .
+bash scripts/test-image.sh localhost/meal-prep:local
+```
+
+The multi-stage build uses Node 24 and runs as the non-root `node` user (UID/GID 1000). It listens on port 3000 and stores databases and uploaded photos under `/data`. Mount a persistent named volume at `/data`; for a bind mount, arrange write access for the container user. Keep the volume on local storage. Configuration and credentials are supplied at runtime, never baked into the image. The build context excludes local data, environment files, and Git history.
+
+Supply the production settings from [Hosting and email](#hosting-and-email) through a private environment file. A minimal local invocation behind an HTTPS reverse proxy is:
+
+```sh
+podman volume create meal-prep-data
+podman run -d --name meal-prep \
+  --env-file /path/to/production.env \
+  -p 127.0.0.1:3000:3000 \
+  -v meal-prep-data:/data \
+  localhost/meal-prep:local
+```
+
+Keep the image defaults for `HOST`, `PORT`, and `MEAL_PREP_DB_PATH` unless deliberately changing the container layout. Configure trusted proxy client-address handling for authentication rate limits. The image includes no SMTP server; use your mail provider. Back up the whole data volume with the app stopped before upgrading.
+
+The **OCI image** workflow builds and smoke-tests Linux amd64 images on pull requests and pushes to `main`. Publishing a GitHub release builds and tests its tagged source, checks that its version matches `package.json`, and pushes to `ghcr.io/schmidma/meal-prep` with tags such as `0.1.1` and `sha-<full-commit>`. It does not publish branch builds or a moving `latest` tag. Pin a version or digest when deploying.
+
+The existing `v0.1.0` release predates this workflow and has no published image. The first container package is created by a future release. After its first publication, set the GHCR package visibility to public and verify anonymous pulls; a public repository alone does not guarantee public package visibility.
+
 ## Development
 
 ```sh
