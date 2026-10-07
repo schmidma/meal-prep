@@ -2,6 +2,8 @@ import { test as base, expect } from '@playwright/test';
 import { signIn, householdAction } from './auth-helpers';
 import { randomUUID } from 'node:crypto';
 import { createStarterPlan } from './fixtures/plans';
+import { linkIngredients } from '../src/lib/ingredient-library';
+import { retainPlannedRecipes, type RecipeCatalog } from '../src/lib/recipe-books';
 import { parseSaveRequest, type PlanDocument } from '../src/lib/plan-document';
 export { expect };
 let authState:
@@ -24,6 +26,36 @@ export const test = base.extend({
       updatedAt: new Date().toISOString(),
       plan: createStarterPlan()
     };
+    const initial = linkIngredients(document.plan);
+    let catalog: RecipeCatalog = {
+      books: [{ id: 'fixture-book', name: 'Our recipes', access: 'owner' }],
+      defaultBookId: 'fixture-book',
+      recipes: initial.recipes.map((recipe) => ({
+        bookId: 'fixture-book',
+        revision: 1,
+        recipe,
+        image: initial.weekly?.images?.[recipe.id] ?? ''
+      }))
+    };
+    document.plan = retainPlannedRecipes(initial);
+    await page.route('**/api/books', async (route) => {
+      if (route.request().method() === 'POST') {
+        const body = route.request().postDataJSON();
+        if (body.action === 'save') {
+          catalog.recipes = [
+            ...catalog.recipes.filter((r) => r.recipe.id !== body.recipe.id),
+            {
+              bookId: body.book,
+              revision: body.revision + 1,
+              recipe: body.recipe,
+              image: body.image
+            }
+          ];
+        } else if (body.action === 'remove-recipe')
+          catalog.recipes = catalog.recipes.filter((r) => r.recipe.id !== body.id);
+      }
+      await route.fulfill({ json: catalog });
+    });
     await page.route('**/api/plan*', async (route) => {
       if (route.request().method() === 'PUT') {
         const save = parseSaveRequest(route.request().postDataJSON());

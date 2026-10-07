@@ -1,3 +1,4 @@
+import { retainPlannedRecipes } from './recipe-books';
 import { ingredientLine } from './ingredient-library';
 import { addDays } from './calendar';
 import { deleteActivity, type CookingSession, type KitchenPlan, type Recipe } from './kitchen';
@@ -9,7 +10,7 @@ export function recipeNotes(recipe: Recipe, portions = recipe.yieldQuantity) {
   const shopping = shoppingForBatch(recipe, portions);
   const ingredients = recipe.ingredients
     .map((row, index) =>
-      row.ingredientId && (row.unit !== undefined || row.preparation !== undefined)
+      row.unit !== undefined || row.preparation !== undefined
         ? ingredientLine(row, portions / recipe.yieldQuantity)
         : shopping[index]
     )
@@ -104,19 +105,21 @@ export function saveCooking(
       shopping.push({ id: newId('shop'), name, checked: false, cookId: session.id })
     );
   }
-  return parseKitchenPlan({
-    ...next,
-    activities,
-    weekly: {
-      ...weekly,
-      styles,
-      images,
-      mealSources,
-      mealSections,
-      shopping,
-      sessions: [...(weekly.sessions ?? []).filter((s) => s.id !== session.id), session]
-    }
-  });
+  return parseKitchenPlan(
+    retainPlannedRecipes({
+      ...next,
+      activities,
+      weekly: {
+        ...weekly,
+        styles,
+        images,
+        mealSources,
+        mealSections,
+        shopping,
+        sessions: [...(weekly.sessions ?? []).filter((s) => s.id !== session.id), session]
+      }
+    })
+  );
 }
 /** Meals remain usable snapshots when a cooking session is removed. */
 export function removeCooking(
@@ -174,10 +177,7 @@ export function shoppingForBatch(recipe: Recipe, portions: number): string[] {
   const factor = portions / recipe.yieldQuantity;
   const amount = (value: number) => Number(value.toPrecision(4)).toString();
   return recipe.ingredients.map((ingredient) => {
-    if (
-      ingredient.ingredientId &&
-      (ingredient.unit !== undefined || ingredient.preparation !== undefined)
-    )
+    if (ingredient.unit !== undefined || ingredient.preparation !== undefined)
       return ingredientLine({ ...ingredient, preparation: '' }, factor);
     const { quantity, name } = ingredient;
     if (factor === 1) return quantity === 1 ? name : `${quantity} ${name}`;

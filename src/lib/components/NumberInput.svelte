@@ -5,6 +5,7 @@
   let {
     value,
     label,
+    disabled = false,
     min = 1,
     max = Infinity,
     step = 1,
@@ -12,6 +13,7 @@
   }: {
     value: number;
     label: string;
+    disabled?: boolean;
     min?: number;
     max?: number;
     step?: number;
@@ -31,10 +33,11 @@
   <button
     type="button"
     aria-label={i18n.t('numbers.decrease', { label: label.toLowerCase() })}
-    disabled={value <= min}
+    disabled={disabled || value <= min}
     onclick={() => adjust(-1)}><Minus size={16} aria-hidden="true" /></button
   >
   <input
+    {disabled}
     bind:this={input}
     type="number"
     lang={i18n.tag}
@@ -55,7 +58,7 @@
   <button
     type="button"
     aria-label={i18n.t('numbers.increase', { label: label.toLowerCase() })}
-    disabled={value >= max}
+    disabled={disabled || value >= max}
     onclick={() => adjust(1)}><Plus size={16} aria-hidden="true" /></button
   >
 </span>

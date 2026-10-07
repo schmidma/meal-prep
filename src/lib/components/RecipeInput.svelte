@@ -9,6 +9,7 @@
     value,
     recipes,
     images = {},
+    bookNames = {},
     label = i18n.t('planner.mealName'),
     hideLabel = false,
     useSoon = [],
@@ -19,6 +20,7 @@
     value: string;
     recipes: Recipe[];
     images?: Record<string, string>;
+    bookNames?: Record<string, string>;
     label?: string;
     hideLabel?: boolean;
     useSoon?: UseSoonItem[];
@@ -108,7 +110,7 @@
         >
           {#if photoUrl(images[recipe.id])}<img src={photoUrl(images[recipe.id])} alt="" />{/if}
           <span
-            >{recipe.name}<small
+            >{recipe.name}{#if bookNames[recipe.id]}<small>{bookNames[recipe.id]}</small>{/if}<small
               >{recipeMatches(recipe, useSoon).length
                 ? i18n.t('recipes.uses', {
                     ingredients: recipeMatches(recipe, useSoon)

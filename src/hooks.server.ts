@@ -2,6 +2,8 @@ import { detectLocale, isLocale } from '$lib/i18n/messages';
 import { building, dev } from '$app/environment';
 import { json, redirect, type Handle } from '@sveltejs/kit';
 import { getAuth, testInboxEnabled } from '$lib/server/auth';
+import { recipeBooks } from '$lib/server/recipe-books';
+import { getPlanStore } from '$lib/server/plan-store';
 import { households } from '$lib/server/households';
 import { svelteKitHandler } from 'better-auth/svelte-kit';
 export const handle: Handle = async ({ event, resolve: resolvePage }) => {
@@ -66,8 +68,21 @@ export const handle: Handle = async ({ event, resolve: resolvePage }) => {
     )
       return json({ error: 'Forbidden' }, { status: 403 });
   }
-  if ((path.startsWith('/api/plan') || path.startsWith('/api/photos')) && !event.locals.household)
+  if (
+    (path.startsWith('/api/plan') ||
+      path.startsWith('/api/photos') ||
+      path.startsWith('/api/books')) &&
+    !event.locals.household
+  )
     return json({ error: 'Create or join a household first.' }, { status: 403 });
+  if (event.locals.household) {
+    // Runs once per household, including households created after startup.
+    recipeBooks().migrate(
+      event.locals.household,
+      getPlanStore(event.locals.household.id),
+      language === 'de' ? 'Unsere Rezepte' : 'Our recipes'
+    );
+  }
   const response = await resolve(event);
   response.headers.set('Cache-Control', 'private, no-store');
   return response;

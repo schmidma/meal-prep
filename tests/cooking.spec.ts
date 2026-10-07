@@ -73,6 +73,7 @@ test('batch shopping scales but individual meal and shopping edits survive saves
   await openPreparation(page);
   await page.getByRole('button', { name: 'Plan a cook', exact: true }).click();
   await recipe(page);
+  await page.getByRole('button', { name: `Cooking day: ${day(0)}`, exact: true }).click();
   await page.getByLabel('Add ingredients to shopping list').check();
   await page.getByRole('button', { name: 'Save', exact: true }).click();
   await page.getByRole('button', { name: 'Add dinner on Wednesday', exact: true }).click();

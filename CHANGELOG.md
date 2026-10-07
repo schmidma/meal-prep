@@ -7,6 +7,17 @@ and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.ht
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-10-07
+
+### Added
+
+- Recipe books shared between households, with viewing or contributing access, invitations, and independent recipe copies.
+- Search across all accessible books when browsing recipes or planning cooking, with an optional book filter in Recipes.
+
+### Changed
+
+- Migrate existing recipe collections automatically into a default book. Planned recipes and photos remain independent of subsequent book edits or access changes.
+
 ## [0.1.4] - 2026-09-30
 
 ### Fixed
@@ -59,7 +70,8 @@ and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.ht
 - Self-hosting with SQLite storage and SMTP email delivery.
 - Code, documentation, and original bundled artwork under AGPL-3.0-only.
 
-[Unreleased]: https://github.com/schmidma/meal-prep/compare/v0.1.4...HEAD
+[Unreleased]: https://github.com/schmidma/meal-prep/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/schmidma/meal-prep/compare/v0.1.4...v0.2.0
 [0.1.4]: https://github.com/schmidma/meal-prep/compare/v0.1.3...v0.1.4
 [0.1.3]: https://github.com/schmidma/meal-prep/compare/v0.1.2...v0.1.3
 [0.1.2]: https://github.com/schmidma/meal-prep/compare/v0.1.1...v0.1.2

@@ -16,7 +16,7 @@
   let cooldown = $state(0);
   onMount(() => {
     const candidate = new URL(location.href).searchParams.get('next');
-    if (candidate && /^\/join\/[a-f0-9]{64}$/.test(candidate)) next = candidate;
+    if (candidate && /^\/(?:join|books\/join)\/[a-f0-9]{64}$/.test(candidate)) next = candidate;
     const timer = setInterval(() => {
       if (cooldown > 0) cooldown--;
     }, 1000);

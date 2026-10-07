@@ -62,8 +62,8 @@ test('personal language persists while household content and custom sections sta
     page.getByRole('heading', { name: 'Grandma’s Kartoffeln', exact: true })
   ).toBeVisible();
   await expect(page.getByTestId('save-status')).toHaveAttribute('data-state', 'saved');
-  const saved = (await (await page.request.get('/api/plan')).json()).plan;
-  expect(saved.recipes[0].ingredients[0]).toMatchObject({
+  const saved = await (await page.request.get('/api/books')).json();
+  expect(saved.recipes[0].recipe.ingredients[0]).toMatchObject({
     name: 'Kichererbsen',
     unit: 'Dosen',
     quantity: 2

@@ -1,4 +1,6 @@
 import { json, type RequestHandler } from '@sveltejs/kit';
+import { recipeBooks, BookError } from '$lib/server/recipe-books';
+import { retainPlannedRecipes } from '$lib/recipe-books';
 import { parseSaveRequest } from '$lib/plan-document';
 import { getPlanStore, PlanConflictError } from '$lib/server/plan-store';
 
@@ -31,6 +33,8 @@ export const PUT: RequestHandler = async ({ request, url, locals }) => {
     'application/json'
   )
     return failure(415, 'Expected application/json', true);
+  if (request.headers.get('x-meal-prep-storage') !== 'books-v1')
+    return failure(409, 'Reload the app before saving after this update.', true);
   const length = request.headers.get('content-length');
   if (length !== null && /^\d+$/.test(length) && Number(length) > MAX_REQUEST_BYTES)
     return failure(413, 'Request too large', true);
@@ -70,14 +74,21 @@ export const PUT: RequestHandler = async ({ request, url, locals }) => {
   let save;
   try {
     save = parseSaveRequest(JSON.parse(body));
+    if (retainPlannedRecipes(save.plan).recipes.length !== save.plan.recipes.length)
+      return failure(
+        409,
+        'Recipes are now saved in recipe books. Download pending edits before reloading.'
+      );
   } catch {
     return failure(400, 'Invalid plan');
   }
   try {
+    recipeBooks().retainPhotos(locals.household!, Object.values(save.plan.weekly?.images ?? {}));
     return json(getPlanStore(locals.household!.id).save(save.revision, save.plan), {
       headers: noStore
     });
   } catch (error) {
+    if (error instanceof BookError) return failure(error.status, error.message);
     if (error instanceof PlanConflictError) return failure(409, 'Plan revision conflict');
     console.error('Failed to save plan', error);
     return failure(500, 'Unable to save plan');

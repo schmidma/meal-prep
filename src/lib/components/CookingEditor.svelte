@@ -20,6 +20,8 @@
   import DayPicker from './DayPicker.svelte';
   let {
     plan,
+    recipes = plan.recipes,
+    bookNames = {},
     week,
     session,
     recipe,
@@ -30,6 +32,8 @@
     onClose
   }: {
     plan: KitchenPlan;
+    recipes?: Recipe[];
+    bookNames?: Record<string, string>;
     week: string;
     session?: CookingSession;
     recipe?: Recipe;
@@ -218,7 +222,8 @@
       <RecipeInput
         hideLabel
         value={name}
-        recipes={plan.recipes}
+        {recipes}
+        {bookNames}
         library={plan.weekly?.ingredientLibrary}
         useSoon={plan.weekly?.useSoon}
         images={plan.weekly?.images}

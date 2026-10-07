@@ -385,7 +385,10 @@ export function httpPlanTransport(
         cache: 'no-store',
         signal: controller.signal,
         ...(value
-          ? { headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(value) }
+          ? {
+              headers: { 'Content-Type': 'application/json', 'X-Meal-Prep-Storage': 'books-v1' },
+              body: JSON.stringify(value)
+            }
           : {})
       });
       if (response.status === 409) throw new SaveConflict('Changed on another device');

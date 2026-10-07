@@ -1,11 +1,23 @@
 <script lang="ts">
   import { useI18n } from '$lib/i18n/context.svelte';
   const i18n = useI18n();
+  import {
+    emptyCatalog,
+    catalogRecipes,
+    planningCatalog,
+    retainPlannedRecipes,
+    snapshotId,
+    type BookRecipe,
+    type RecipeCatalog
+  } from '$lib/recipe-books';
+  import { bookRequest, BookRequestError } from '$lib/recipe-books-client';
+  import RecipeBookManager from '$lib/components/RecipeBookManager.svelte';
   import ShoppingList from '$lib/components/ShoppingList.svelte';
   import NumberInput from '$lib/components/NumberInput.svelte';
   import { confirmAction, askChoice } from '$lib/confirmation';
   import { setAccountContext, accountFetch } from '$lib/household-client';
-  import { goto } from '$app/navigation';
+  import { goto, replaceState } from '$app/navigation';
+  import { page } from '$app/state';
   import type { Account } from '$lib/account';
   import HouseholdSettings from '$lib/components/HouseholdSettings.svelte';
   import SignOut from '$lib/components/SignOut.svelte';
@@ -63,6 +75,31 @@
   import '$lib/styles/planner.css';
 
   let account = $state<Account | null>(null);
+  let catalog = $state<RecipeCatalog>(emptyCatalog());
+  let catalogReady = $state(false);
+  let bookFilter = $state('');
+  let bookManager = $state(false);
+  let recipeBookId = $state('');
+  let recipeSaving = $state(false);
+  let recipeDraftId = $state('');
+  let currentEntry = $state<BookRecipe | undefined>();
+  let catalogRequest = 0;
+  async function refreshBooks(canApply = () => true) {
+    const request = ++catalogRequest;
+    try {
+      const value = await bookRequest();
+      if (request !== catalogRequest || (catalogReady && !canApply())) return;
+      catalog = value;
+      catalogReady = true;
+      if (bookFilter && !catalog.books.some((b) => b.id === bookFilter)) bookFilter = '';
+    } catch (cause) {
+      if (!catalogReady) throw cause;
+    }
+  }
+  function bookForRecipe(id: string) {
+    const entry = catalog.recipes.find((r) => snapshotId(r) === id);
+    return catalog.books.find((b) => b.id === entry?.bookId);
+  }
   let accountError = $state('');
   const storageScope = () =>
     account ? `${account.user.id}:${account.household!.id}` : 'uninitialized';
@@ -110,9 +147,24 @@
   let libraryOpen = $state(false);
   let photoBusy = $state(false);
   let photoOpen = $state(false);
+  const bookNames = $derived(
+    catalog.books.length > 1
+      ? Object.fromEntries(
+          catalog.recipes.map((r) => [
+            snapshotId(r),
+            catalog.books.find((b) => b.id === r.bookId)?.name ?? ''
+          ])
+        )
+      : {}
+  );
+  const cookingPlan = $derived(linkIngredients(planningCatalog(plan, catalog)));
+  const availableRecipes = $derived(catalogRecipes(catalog, cookingPlan));
+  const recipeAccess = $derived(catalog.books.find((b) => b.id === recipeBookId)?.access);
+  const recipeReadOnly = $derived(modal === 'recipe' && !!editing && recipeAccess === 'view');
+  const writableBooks = $derived(catalog.books.filter((b) => b.access !== 'view'));
   let leftoverRecipeId = $state('');
   const boundRecipe = $derived(
-    plan.recipes.find(
+    cookingPlan.recipes.find(
       (r) =>
         r.id ===
         (modal === 'leftover'
@@ -123,7 +175,9 @@
             : undefined)
     )
   );
-  const dialogPhoto = $derived(boundRecipe ? (plan.weekly?.images?.[boundRecipe.id] ?? '') : photo);
+  const dialogPhoto = $derived(
+    boundRecipe ? (cookingPlan.weekly?.images?.[boundRecipe.id] ?? '') : photo
+  );
   let recipePaste = $state('');
   let recipeIngredients = $state<Recipe['ingredients']>([]);
   let mealIngredients = $state<Recipe['ingredients']>([]);
@@ -139,6 +193,7 @@
       portions,
       recipeIngredients,
       recipePaste,
+      recipeBookId,
       leftoverRecipeId,
       shopWithMeal,
       photo,
@@ -266,9 +321,10 @@
     )
   );
   const recipes = $derived(
-    plan.recipes
+    availableRecipes
       .filter(
         (r) =>
+          (!bookFilter || bookForRecipe(r.id)?.id === bookFilter) &&
           recipeIngredientSearch(r, plan.weekly?.ingredientLibrary ?? [], search) &&
           recipeHasIngredients(r, plan.weekly?.ingredientLibrary ?? [], recipeFilters) &&
           (!filterUseSoon || recipeMatches(r, useSoon).length > 0)
@@ -302,7 +358,8 @@
       !document.activeElement?.matches('input, textarea, select, [contenteditable="true"]') &&
       !dragged;
     const refreshShared = () => {
-      if (!canRefresh()) return;
+      if (!canRefresh() || !account) return;
+      void refreshBooks(canRefresh);
       if (persistence.phase === 'error' && navigator.onLine) void sync?.retry();
       else void sync?.refresh();
     };
@@ -340,6 +397,13 @@
           )
             tab = savedTab;
         } catch {}
+        if (new URL(location.href).searchParams.get('view') === 'recipes') {
+          tab = 'recipes';
+          try {
+            sessionStorage.setItem(`meal-prep:page:${storageScope()}`, 'recipes');
+          } catch {}
+          replaceState('/', page.state);
+        }
         document.documentElement.removeAttribute('data-theme');
         try {
           const savedWeek = sessionStorage.getItem(`meal-prep:last-week:${storageScope()}`);
@@ -375,8 +439,10 @@
             undoPlan = null;
           }
         });
-        void sync.start();
+        await refreshBooks();
+        await sync.start();
       } catch {
+        account = null;
         accountError = i18n.t('planner.unableToLoadYourAccountPleaseReload');
       }
     }
@@ -392,7 +458,7 @@
   function commit(next: KitchenPlan, message = '') {
     if (!loaded) return false;
     try {
-      next = linkIngredients(next);
+      next = linkIngredients(retainPlannedRecipes(next));
       parseKitchenPlan(next);
       undoPlan = clone(plan);
       plan = next;
@@ -450,6 +516,7 @@
       dialog?.querySelector<HTMLInputElement>('.wp-food-dialog-heading input')?.focus();
   }
   async function close(force = false) {
+    if (recipeSaving) return false;
     if (
       !force &&
       draftKey() !== initialDraft &&
@@ -504,13 +571,20 @@
     void show('meal');
   }
   function newRecipe(recipe?: Recipe, suggestedName = '') {
-    photo = plan.weekly?.images?.[recipe?.id ?? ''] ?? '';
+    currentEntry = catalog.recipes.find((r) => snapshotId(r) === recipe?.id);
+    recipeDraftId = uid();
+    recipeBookId =
+      bookForRecipe(recipe?.id ?? '')?.id ??
+      (writableBooks.some((b) => b.id === bookFilter) ? bookFilter : catalog.defaultBookId);
+    photo = cookingPlan.weekly?.images?.[recipe?.id ?? ''] ?? '';
     editing = recipe?.id ?? '';
     title = recipe?.name ?? suggestedName;
     notes = recipe?.instructions ?? '';
     portions = recipe?.yieldQuantity ?? 4;
-    recipeIngredients = recipe?.ingredients.length
-      ? recipe.ingredients
+    const originalRecipe =
+      catalog.recipes.find((r) => snapshotId(r) === recipe?.id)?.recipe ?? recipe;
+    recipeIngredients = originalRecipe?.ingredients.length
+      ? originalRecipe.ingredients
       : [{ id: uid(), name: '', quantity: 1, unit: '', preparation: '' }];
     recipePaste = '';
     void show('recipe');
@@ -572,11 +646,12 @@
   function chooseLeftoverRecipe(recipe: Recipe) {
     leftoverRecipeId = recipe.id;
     title = recipe.name;
-    photo = plan.weekly?.images?.[recipe.id] ?? '';
+    photo = cookingPlan.weekly?.images?.[recipe.id] ?? '';
     portions = recipe.yieldQuantity;
   }
 
-  function save() {
+  async function save() {
+    if (recipeSaving) return;
     if (photoBusy) return;
     if (!title.trim()) return;
     if (modal === 'meal') {
@@ -640,7 +715,7 @@
             shopping: shopWithMeal
               ? shoppingWith(
                   mealIngredients.map((i) =>
-                    i.ingredientId && i.unit !== undefined
+                    i.unit !== undefined
                       ? ingredientLine(i)
                       : i.quantity === 1
                         ? i.name
@@ -658,33 +733,53 @@
         tab = 'week';
       }
     } else if (modal === 'recipe') {
-      const id = editing || uid();
-      const ingredients = [
-        ...recipeIngredients.filter((row) => row.name.trim()),
-        ...recipePaste
-          .split('\n')
-          .map((line) => line.trim())
-          .filter(Boolean)
-          .map((line) => parseRecipeIngredientLine(line))
-      ];
-      const recipe: Recipe = {
-        id,
-        name: title.trim(),
-        yieldQuantity: portions,
-        durationMinutes: plan.recipes.find((r) => r.id === id)?.durationMinutes ?? 30,
-        ingredients,
-        instructions: notes
-      };
-      commit(
-        {
+      if (recipeReadOnly) {
+        await close(true);
+        return;
+      }
+      recipeSaving = true;
+      catalogRequest++;
+      try {
+        const recipe: Recipe = {
+          id: currentEntry?.recipe.id ?? recipeDraftId,
+          name: title.trim(),
+          yieldQuantity: portions,
+          durationMinutes: currentEntry?.recipe.durationMinutes ?? 30,
+          ingredients: [
+            ...recipeIngredients.filter((row) => row.name.trim()),
+            ...recipePaste
+              .split('\n')
+              .map((line) => line.trim())
+              .filter(Boolean)
+              .map((line) => parseRecipeIngredientLine(line))
+          ],
+          instructions: notes
+        };
+        catalog = await bookRequest({
+          action: 'save',
+          book: recipeBookId,
+          recipe,
+          image: photo,
+          revision: currentEntry?.revision ?? 0
+        });
+        const learned = linkIngredients({ ...plan, recipes: [...plan.recipes, recipe] });
+        commit({
           ...plan,
-          recipes: editing
-            ? plan.recipes.map((r) => (r.id === id ? recipe : r))
-            : [...plan.recipes, recipe],
-          weekly: { ...extras(plan), images: imageRecord(id) }
-        },
-        i18n.t('planner.recipeSaved')
-      );
+          weekly: { ...extras(plan), ingredientLibrary: learned.weekly?.ingredientLibrary }
+        });
+        undoPlan = null;
+        noticeVersion++;
+        notice = i18n.t('planner.recipeSaved');
+        noticeIsWarning = false;
+      } catch (cause) {
+        error = i18n.error(
+          cause instanceof Error ? cause.message : 'Unable to update recipe books.'
+        );
+        if (cause instanceof BookRequestError && [403, 404, 409].includes(cause.status))
+          await refreshBooks();
+      } finally {
+        recipeSaving = false;
+      }
     } else if (modal === 'leftover') {
       const id = editing || uid();
       const old = plan.batches.find((b) => b.id === id);
@@ -704,8 +799,9 @@
       commit(
         {
           ...plan,
+          recipes: cookingPlan.recipes,
           batches: [...plan.batches.filter((b) => b.id !== id), batch],
-          weekly: { ...extras(plan), images: imageRecord(id) }
+          weekly: { ...extras(plan), images: { ...cookingPlan.weekly?.images, ...imageRecord(id) } }
         },
         i18n.t('planner.leftoversUpdated')
       );
@@ -732,12 +828,35 @@
   async function remove() {
     if (modal === 'meal') {
       removeMeal(editing);
-    } else if (modal === 'recipe')
-      commit(
-        { ...plan, recipes: plan.recipes.filter((r) => r.id !== editing) },
-        i18n.t('planner.recipeRemoved')
-      );
-    else if (!(await removeLeftover(editing))) return;
+    } else if (modal === 'recipe') {
+      if (!currentEntry || recipeSaving) return;
+      if (
+        !(await confirmAction(
+          i18n.t('books.deleteRecipePrompt'),
+          i18n.t('planner.remove'),
+          i18n.t('books.deleteRecipe')
+        ))
+      )
+        return;
+      recipeSaving = true;
+      catalogRequest++;
+      try {
+        catalog = await bookRequest({
+          action: 'remove-recipe',
+          id: currentEntry.recipe.id,
+          revision: currentEntry.revision
+        });
+      } catch (cause) {
+        error = i18n.error(
+          cause instanceof Error ? cause.message : 'Unable to update recipe books.'
+        );
+        if (cause instanceof BookRequestError && [403, 404, 409].includes(cause.status))
+          await refreshBooks();
+        return;
+      } finally {
+        recipeSaving = false;
+      }
+    } else if (!(await removeLeftover(editing))) return;
     close(true);
   }
   function shoppingWith(names: string[]) {
@@ -1153,7 +1272,7 @@
         >
         <button class:active={tab === 'recipes'} onclick={() => navigateSection('recipes')}
           ><Icon name="book" />{i18n.t('planner.recipes')}<span class="wp-nav-count"
-            >{plan.recipes.length}</span
+            >{availableRecipes.length}</span
           ></button
         >
         <button class:active={tab === 'shopping'} onclick={() => navigateSection('shopping')}
@@ -1364,7 +1483,7 @@
               >
                 <IngredientInput
                   value={useSoonText}
-                  library={plan.weekly?.ingredientLibrary ?? []}
+                  library={cookingPlan.weekly?.ingredientLibrary ?? []}
                   label={i18n.t('planner.useSoonIngredient')}
                   onInput={(value) => (useSoonText = value)}
                   onSelect={(item) => addUseSoon(item.name)}
@@ -1687,12 +1806,19 @@
               <h1>{i18n.t('planner.recipes')}</h1>
             </div>
             <div class="wp-page-actions">
+              {#if account?.household?.role === 'owner'}<button
+                  class="wp-secondary"
+                  onclick={() => (bookManager = true)}>{i18n.t('books.manage')}</button
+                >{/if}
               <button
                 class="wp-secondary"
                 disabled={!loaded || photoBusy}
                 onclick={() => (libraryOpen = true)}>{i18n.t('planner.manageIngredients')}</button
               >
-              <button class="wp-primary" disabled={!loaded || photoBusy} onclick={() => newRecipe()}
+              <button
+                class="wp-primary"
+                disabled={!loaded || !catalogReady || !writableBooks.length || photoBusy}
+                onclick={() => newRecipe()}
                 ><Icon name="plus" size={18} />{i18n.t('planner.addARecipe')}</button
               >
             </div>
@@ -1700,7 +1826,7 @@
           <div class="wp-recipe-search">
             <IngredientInput
               value={search}
-              library={plan.weekly?.ingredientLibrary ?? []}
+              library={cookingPlan.weekly?.ingredientLibrary ?? []}
               label={i18n.t('common.searchRecipes')}
               placeholder={i18n.t('planner.searchRecipesOrIngredients')}
               descriptionId="recipe-search-help"
@@ -1709,16 +1835,26 @@
               onSelect={(item) => addRecipeFilter(item.name)}
               onEnter={() => addRecipeFilter()}
             />
+            <label class="wp-book-picker"
+              ><Icon name="book" size={18} /><select
+                aria-label={i18n.t('books.choose')}
+                bind:value={bookFilter}
+              >
+                <option value="">{i18n.t('books.all')}</option>
+                {#each catalog.books as book}<option value={book.id}>{book.name}</option>{/each}
+              </select></label
+            >
           </div>
           <p id="recipe-search-help" class="wp-search-help">
             {i18n.t('planner.pressEnterToAddAnIngredientFilter')}
-            {#if search || recipeFilters.length || filterUseSoon}<button
+            {#if search || recipeFilters.length || filterUseSoon || bookFilter}<button
                 type="button"
                 class="wp-clear-filters"
                 onclick={() => {
                   search = '';
                   recipeFilters = [];
                   filterUseSoon = false;
+                  bookFilter = '';
                 }}>{i18n.t('planner.clearFilters')}</button
               >{/if}
           </p>
@@ -1752,11 +1888,16 @@
             {#each recipes as recipe}<article class="wp-recipe">
                 <button
                   class="wp-recipe-open"
-                  aria-label={i18n.t('recipes.editNamed', { name: recipe.name })}
+                  aria-label={i18n.t(
+                    bookForRecipe(recipe.id)?.access === 'view'
+                      ? 'books.viewRecipe'
+                      : 'recipes.editNamed',
+                    { name: recipe.name }
+                  )}
                   onclick={() => newRecipe(recipe)}
                   ><div class="wp-recipe-art">
-                    {#if photoUrl(plan.weekly?.images?.[recipe.id])}<img
-                        src={photoUrl(plan.weekly?.images?.[recipe.id])}
+                    {#if photoUrl(cookingPlan.weekly?.images?.[recipe.id])}<img
+                        src={photoUrl(cookingPlan.weekly?.images?.[recipe.id])}
                         alt={recipe.name}
                         loading="lazy"
                       />{:else}<Icon name="bowl" size={44} /><span
@@ -1765,6 +1906,8 @@
                   </div>
                   <div class="wp-recipe-title">
                     <h2>{recipe.name}</h2>
+                    {#if catalog.books.length > 1}<small>{bookForRecipe(recipe.id)?.name}</small
+                      >{/if}
                     <span
                       ><span class="wp-portions-label"
                         ><Icon name="bowl" size={13} />{i18n.t('recipes.metadata', {
@@ -1792,7 +1935,7 @@
                     onclick={() =>
                       addShopping(
                         recipe.ingredients.map((i) =>
-                          i.ingredientId && i.unit !== undefined
+                          i.unit !== undefined
                             ? ingredientLine(i)
                             : i.quantity === 1
                               ? i.name
@@ -1819,7 +1962,7 @@
                 </p>
                 <button
                   class="wp-primary"
-                  disabled={!loaded || photoBusy}
+                  disabled={!loaded || photoBusy || !writableBooks.length}
                   onclick={() => newRecipe(undefined, search.trim() || recipeFilters.join(' '))}
                   >{search.trim() || recipeFilters.length
                     ? i18n.t('recipes.createNamed', {
@@ -1919,7 +2062,8 @@
                   : i18n.t('planner.addMeal')}
             titleId="wp-dialog-title"
             image={dialogPhoto}
-            editable={!photoOpen &&
+            editable={!recipeReadOnly &&
+              !photoOpen &&
               !boundRecipe &&
               !(modal === 'meal' && (style === 'leftovers' || sourceId || leftoverId))}
             onPhoto={() => (photoOpen = !photoOpen)}
@@ -1928,9 +2072,10 @@
               <RecipeInput
                 hideLabel
                 value={title}
-                recipes={plan.recipes}
-                library={plan.weekly?.ingredientLibrary}
-                images={plan.weekly?.images}
+                recipes={availableRecipes}
+                {bookNames}
+                library={cookingPlan.weekly?.ingredientLibrary}
+                images={cookingPlan.weekly?.images}
                 label={i18n.t('common.leftoverName')}
                 onInput={(v) => {
                   title = v;
@@ -1940,6 +2085,7 @@
               />
             {:else if !(modal === 'meal' && !editing && style === 'leftovers' && !title)}
               <input
+                readonly={recipeReadOnly}
                 class="wp-header-name"
                 aria-label={modal === 'recipe'
                   ? i18n.t('planner.name')
@@ -2086,10 +2232,19 @@
                   >
                 </details>
               {:else}
+                {#if modal === 'recipe'}<label class="wp-field"
+                    >{i18n.t('books.book')}
+                    <select bind:value={recipeBookId} disabled={!!editing || recipeSaving} required>
+                      {#each catalog.books.filter((b) => b.access !== 'view' || b.id === recipeBookId) as book}<option
+                          value={book.id}>{book.name}</option
+                        >{/each}
+                    </select></label
+                  >{/if}
                 <div class="wp-field" class:wp-recipe-yield={modal === 'recipe'}>
                   <span class="wp-portions-label"
                     ><Icon name="bowl" size={13} />{i18n.t('planner.portions')}</span
                   ><NumberInput
+                    disabled={recipeReadOnly}
                     label={i18n.t('planner.portions')}
                     value={portions}
                     min={0.5}
@@ -2104,17 +2259,28 @@
                       class="wp-secondary wp-recipe-plan"
                       onclick={async () => {
                         if (!dialog?.querySelector('form')?.reportValidity() || photoBusy) return;
-                        const id = editing;
-                        save();
-                        if (!error && modal === null)
-                          openCooking(plan.recipes.find((r) => r.id === id));
+                        const id = currentEntry?.recipe.id;
+                        await save();
+                        if (!error && modal === null) {
+                          const saved = catalog.recipes.find((r) => r.recipe.id === id);
+                          openCooking(
+                            availableRecipes.find((r) => r.id === (saved && snapshotId(saved)))
+                          );
+                        }
                       }}><Icon name="plus" size={16} />{i18n.t('planner.planACook')}</button
                     >{/if}
                 </div>
-                {#if modal === 'recipe'}<RecipeIngredients
+                {#if modal === 'recipe' && recipeReadOnly}
+                  <ul>
+                    {#each recipeIngredients as ingredient}<li>
+                        {ingredientLine(ingredient)}
+                      </li>{/each}
+                  </ul>
+                  <p style="white-space: pre-wrap">{notes}</p>
+                {:else if modal === 'recipe'}<RecipeIngredients
                     rows={recipeIngredients}
                     bind:pasted={recipePaste}
-                    library={plan.weekly?.ingredientLibrary ?? []}
+                    library={cookingPlan.weekly?.ingredientLibrary ?? []}
                     onChange={(rows) => (recipeIngredients = rows)}
                   /><label class="wp-field"
                     ><span class="wp-recipe-section-label">{i18n.t('planner.method')}</span
@@ -2134,16 +2300,48 @@
                     class="wp-secondary"
                     onclick={duplicateMeal}>{i18n.t('planner.duplicateMeal')}</button
                   >{/if}
-                {#if editing}<button type="button" class="wp-delete" onclick={remove}
+                {#if editing && (modal !== 'recipe' || recipeAccess === 'owner')}<button
+                    type="button"
+                    class="wp-delete"
+                    disabled={recipeSaving}
+                    onclick={remove}
                     ><Icon name="trash" size={17} />{i18n.t('planner.remove')}</button
                   >{/if}
+                {#if modal === 'recipe' && editing && writableBooks.length}<button
+                    type="button"
+                    class="wp-secondary"
+                    disabled={recipeSaving}
+                    onclick={async () => {
+                      if (
+                        draftKey() !== initialDraft &&
+                        !(await confirmAction(i18n.t('planner.discardTheseUnsavedEdits')))
+                      )
+                        return;
+                      const source = availableRecipes.find((r) => r.id === editing);
+                      if (!source) return;
+                      newRecipe(source);
+                      editing = '';
+                      currentEntry = undefined;
+                      recipeBookId = catalog.defaultBookId;
+                      await tick();
+                      initialDraft = draftKey();
+                      dialog?.querySelector<HTMLInputElement>('.wp-header-name')?.focus();
+                    }}>{i18n.t('books.copy')}</button
+                  >{/if}
                 <div>
-                  <button type="button" class="wp-secondary" onclick={() => close()}
-                    >{i18n.t('planner.cancel')}</button
+                  <button
+                    type="button"
+                    class="wp-secondary"
+                    disabled={recipeSaving}
+                    onclick={() => close()}>{i18n.t('planner.cancel')}</button
                   >
-                  <button class="wp-primary" disabled={!loaded || photoBusy}
-                    >{i18n.t('planner.save')}</button
-                  >
+                  {#if !recipeReadOnly}<button
+                      class="wp-primary"
+                      disabled={!loaded ||
+                        photoBusy ||
+                        recipeSaving ||
+                        (modal === 'recipe' && !recipeBookId)}>{i18n.t('planner.save')}</button
+                    >{/if}
                 </div>
               </footer>
             {/if}
@@ -2162,7 +2360,9 @@
   {/if}
 
   {#if cooking}<CookingEditor
-      {plan}
+      plan={cookingPlan}
+      recipes={availableRecipes}
+      {bookNames}
       week={cooking.day ?? week}
       firstMeal={cooking.firstMeal}
       {preferredPortions}
@@ -2177,8 +2377,18 @@
       onClose={() => (cooking = null)}
     />{/if}
 
+  {#if bookManager}<RecipeBookManager
+      {catalog}
+      selected={bookFilter}
+      onChange={(value) => {
+        catalogRequest++;
+        catalog = value;
+        if (!catalog.books.some((b) => b.id === bookFilter)) bookFilter = '';
+      }}
+      onClose={() => (bookManager = false)}
+    />{/if}
   {#if libraryOpen}<IngredientLibrary
-      {plan}
+      plan={cookingPlan}
       onSave={commit}
       onClose={() => (libraryOpen = false)}
     />{/if}

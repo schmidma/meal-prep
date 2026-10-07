@@ -45,21 +45,22 @@ test('households isolate plans and photos; invitations are single use and remova
     expect(
       (await householdAction(owner, { action: 'create', name: 'Private kitchen' })).ok()
     ).toBeTruthy();
-    const original = await (await owner.get('/api/plan')).json();
-    original.plan.recipes.push({
-      id: 'private-recipe',
-      name: 'Private recipe',
-      yieldQuantity: 2,
-      durationMinutes: 20,
-      ingredients: [],
-      instructions: ''
-    });
-    const save = await owner.put('/api/plan', {
+    const original = await (await owner.get('/api/books')).json();
+    const save = await owner.post('/api/books', {
       headers: { Origin: origin },
       data: {
-        schemaVersion: original.schemaVersion,
-        revision: original.revision,
-        plan: original.plan
+        action: 'save',
+        book: original.defaultBookId,
+        revision: 0,
+        image: '',
+        recipe: {
+          id: randomUUID(),
+          name: 'Private recipe',
+          yieldQuantity: 2,
+          durationMinutes: 20,
+          ingredients: [],
+          instructions: ''
+        }
       }
     });
     expect(save.status(), await save.text()).toBe(200);
@@ -72,14 +73,14 @@ test('households isolate plans and photos; invitations are single use and remova
     const id = (await photo.json()).id;
     await householdAction(outsider, { action: 'create', name: 'Other kitchen' });
     expect((await outsider.get(`/api/photos/${id}`)).status()).toBe(404);
-    expect(JSON.stringify(await (await outsider.get('/api/plan')).json())).not.toContain(
+    expect(JSON.stringify(await (await outsider.get('/api/books')).json())).not.toContain(
       'Private recipe'
     );
     const invitation = await (await householdAction(owner, { action: 'invite' })).json();
     const token = invitation.url.split('/').pop();
     expect((await householdAction(member, { action: 'join', token })).status()).toBe(200);
     expect((await member.get(`/api/photos/${id}`)).status()).toBe(200);
-    expect(JSON.stringify(await (await member.get('/api/plan')).json())).toContain(
+    expect(JSON.stringify(await (await member.get('/api/books')).json())).toContain(
       'Private recipe'
     );
     expect((await householdAction(member, { action: 'invite' })).status()).toBe(403);

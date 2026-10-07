@@ -52,13 +52,21 @@ Settings controls the starting day, number of days, default portions, and enable
 
 ## Accounts, households, and language
 
-Everyone in a household can plan meals and edit recipes. Owners manage the household name, membership, and invitations. A household can have multiple owners, but at least one must remain. Invite links are single-use, valid for seven days, and individually revocable. Generating a link does not send an email; share it yourself. An account belongs to one household at a time.
+Everyone in a household can plan meals. Recipe editing depends on the household’s access to each book. Owners manage the household name, membership, and invitations. A household can have multiple owners, but at least one must remain. Invite links are single-use, valid for seven days, and individually revocable. Generating a link does not send an email; share it yourself. An account belongs to one household at a time.
 
 **Settings → Language** changes only your interface. English and German are also available before sign-in. Browser language supplies the initial default, with English as fallback. A choice made while signed in is saved to the account; a cookie remembers the pre-login language. Dates, counts, built-in section labels, and sign-in emails are localized. Recipes, ingredients, notes, household names, and custom or renamed sections stay as written.
 
+## Recipe books
+
+**Recipes** searches all accessible books by default. Use the book selector to narrow the collection; cooking suggestions always search across books. New recipes go into your default book unless you choose another destination.
+
+Household owners can create books and manage sharing through **Recipes → Manage books**. Invite another household with **Can view** or **Can contribute** access. Readers can browse, plan, and copy recipes; contributors can also add and edit them. Only the owning household can remove recipes, and its owners manage invitations, access, and deletion of the book. Book access never grants access to another household’s agenda or shopping list.
+
+**Copy recipe** makes an independent version in a book you can edit. Planning captures a recipe and its photo, so later edits, deletion, or loss of access do not change existing cooking plans. Ingredient names and aliases are matched within your household.
+
 ## Saving and backups
 
-**Saved** means the current edits reached the server. Household changes are checked automatically while the app is open. Independent edits are merged; overlapping edits require a decision rather than silently replacing someone’s work. Unsaved changes have a per-user, per-household, per-tab recovery copy when browser storage is available. This recovery copy is not a backup.
+**Saved** means the current agenda and shopping edits reached the server. Recipe dialogs save separately; a failed save keeps the dialog open. Household changes are checked automatically while the app is open. Independent edits are merged; overlapping edits require a decision rather than silently replacing someone’s work. Unsaved changes have a per-user, per-household, per-tab recovery copy when browser storage is available. This recovery copy is not a backup.
 
 If saving fails, keep the tab open and use **Retry**. Conflicting edits can be downloaded before loading the saved plan. Wait for **Saved**, or download pending edits, before closing the tab.
 
@@ -66,12 +74,14 @@ Private storage defaults to `data/`:
 
 - `accounts.sqlite`: authentication and sessions.
 - `households.sqlite`: membership, invitations, and personal language preferences.
-- `households/<id>/plan.sqlite`: the household plan.
+- `recipe-books.sqlite`: recipes, books, household access, and book invitations.
+- `recipe-photos/`: shared recipe photos.
+- `households/<id>/plan.sqlite`: the household plan and planned recipe snapshots.
 - `households/<id>/photos/`: uploaded recipe and meal photos.
 
 `MEAL_PREP_DB_PATH` sets the base database path; its parent directory contains the household storage. Keep the whole directory private and on persistent storage. Uploads are resized to at most 1200 pixels and stored as JPEGs. Replaced images are retained for Undo and existing references.
 
-For a backup, wait for saves to finish, stop the app, and copy the **whole storage directory**, including any SQLite `-wal` and `-shm` files. Restore with the app stopped and browser tabs closed, then restart. Existing document formats are upgraded when loaded; never delete a database to resolve a migration error.
+For a backup, wait for saves to finish, stop the app, and copy the **whole storage directory**, including any SQLite `-wal` and `-shm` files. Restore with the app stopped and browser tabs closed, then restart. Existing document formats are upgraded automatically; never delete a database to resolve a migration error. The recipe-book migration runs during initialization on the first signed-in request, moving each existing collection into “Our recipes” while preserving planned snapshots. An interrupted migration resumes safely on retry. Close old browser tabs before upgrading; rolling back a storage migration requires the matching data backup.
 
 ## Hosting and email
 

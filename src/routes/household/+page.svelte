@@ -8,11 +8,14 @@
   import { onMount } from 'svelte';
   import SignOut from '$lib/components/SignOut.svelte';
   import '$lib/styles/planner.css';
+  let next = '/';
   let name = $state(i18n.t('household.ourKitchen'));
   let email = $state('');
   let busy = $state(false);
   let error = $state('');
   onMount(() => {
+    const candidate = new URL(location.href).searchParams.get('next');
+    if (candidate && /^\/books\/join\/[a-f0-9]{64}$/.test(candidate)) next = candidate;
     void fetch('/api/account')
       .then(async (r) => {
         if (r.status === 401) {
@@ -23,7 +26,7 @@
         const account = await r.json();
         setAccountContext(account);
         await i18n.loadAccount(account);
-        if (account.household) await goto('/', { replaceState: true });
+        if (account.household) await goto(next, { replaceState: true });
         email = account.user.email;
       })
       .catch(() => (error = i18n.t('planner.unableToLoadYourAccountPleaseReload')));
@@ -39,7 +42,7 @@
       });
       const result = await r.json();
       if (!r.ok) throw new Error(result.error);
-      await goto('/', { replaceState: true, invalidateAll: true });
+      await goto(next, { replaceState: true, invalidateAll: true });
     } catch (cause) {
       error =
         cause instanceof Error

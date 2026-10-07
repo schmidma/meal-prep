@@ -30,6 +30,17 @@ export class HouseholdStore {
     if (!columns.some((column) => column.name === 'token'))
       this.db.exec('ALTER TABLE invitations ADD COLUMN token TEXT');
   }
+  all(): Household[] {
+    return this.db.prepare("SELECT id,name,'owner' AS role FROM households").all() as Household[];
+  }
+  name(id: string): string {
+    return (
+      (
+        this.db.prepare('SELECT name FROM households WHERE id=?').get(id) as
+          { name: string } | undefined
+      )?.name ?? id
+    );
+  }
   locale(userId: string): Locale | null {
     return (
       (
