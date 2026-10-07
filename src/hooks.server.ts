@@ -84,6 +84,7 @@ export const handle: Handle = async ({ event, resolve: resolvePage }) => {
     );
   }
   const response = await resolve(event);
-  response.headers.set('Cache-Control', 'private, no-store');
+  if (!response.headers.has('Cache-Control'))
+    response.headers.set('Cache-Control', 'private, no-store');
   return response;
 };

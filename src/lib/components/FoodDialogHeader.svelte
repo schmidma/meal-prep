@@ -22,7 +22,7 @@
 </script>
 
 <header class="wp-food-dialog-header">
-  <img class="wp-food-dialog-art" src={photoUrl(image)} alt="" />
+  <img class="wp-food-dialog-art" src={photoUrl(image, 1200)} alt="" />
   <div class="wp-food-dialog-heading">
     <!-- Initial dialog focus belongs on its heading, not an editable field. -->
     <!-- svelte-ignore a11y_autofocus -->

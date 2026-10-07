@@ -108,7 +108,10 @@
           onpointerdown={(e) => e.preventDefault()}
           onclick={() => choose(recipe)}
         >
-          {#if photoUrl(images[recipe.id])}<img src={photoUrl(images[recipe.id])} alt="" />{/if}
+          {#if photoUrl(images[recipe.id], 320)}<img
+              src={photoUrl(images[recipe.id], 320)}
+              alt=""
+            />{/if}
           <span
             >{recipe.name}{#if bookNames[recipe.id]}<small>{bookNames[recipe.id]}</small>{/if}<small
               >{recipeMatches(recipe, useSoon).length

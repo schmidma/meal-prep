@@ -31,6 +31,19 @@ try {
     assert.ok(existsSync(join(app, file)), `Archive missing ${file}`);
   }
   assert.ok(!existsSync(join(app, 'node_modules/vite')), 'Build tools must not ship');
+  execFileSync(
+    process.execPath,
+    [
+      '--input-type=module',
+      '-e',
+      `
+    import sharp from 'sharp';
+    const image = await sharp({ create: { width: 16, height: 16, channels: 3, background: 'green' } }).webp().toBuffer();
+    if ((await sharp(image).metadata()).format !== 'webp') throw new Error('Image processing unavailable');
+  `
+    ],
+    { cwd: app }
+  );
   const state = join(scratch, 'state');
   for (let run = 0; run < 2; run++) {
     logs = '';

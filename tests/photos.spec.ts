@@ -22,7 +22,7 @@ test('recipe photos upload, survive reload and can be replaced with an illustrat
   const url = await picker.getByAltText('Recipe preview').getAttribute('src');
   const response = await page.request.get(url!);
   expect(response.status()).toBe(200);
-  expect(response.headers()['content-type']).toBe('image/jpeg');
+  expect(response.headers()['content-type']).toBe('image/webp');
   await page.screenshot({ path: `/tmp/recipe-photo-${info.project.name}.png` });
   await page.getByRole('button', { name: 'Back to details', exact: true }).click();
   await page.getByRole('button', { name: 'Save', exact: true }).click();

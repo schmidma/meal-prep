@@ -28,6 +28,9 @@ import { existsSync } from 'node:fs';
 import { DatabaseSync } from 'node:sqlite';
 assert.notEqual(process.getuid(), 0, 'Runtime must not run as root');
 assert.equal(process.env.NODE_ENV, 'production');
+const { default: sharp } = await import('sharp');
+const image = await sharp({ create: { width: 16, height: 16, channels: 3, background: 'green' } }).webp().toBuffer();
+assert.equal((await sharp(image).metadata()).format, 'webp');
 const origin = 'http://127.0.0.1:3000';
 let ready = false;
 for (let i = 0; i < 60; i++) {

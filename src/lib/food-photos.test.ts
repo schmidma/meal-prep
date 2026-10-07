@@ -7,7 +7,7 @@ it('uses illustrations by default and restricts stored photo references', () => 
   expect(photoUrl('sketch-soup')).toBe('/images/illustrations/soup.webp');
   expect(photoUrl('chickpea-curry')).toBe('/images/food/chickpea-curry.png');
   const upload = `upload-${'a'.repeat(64)}`;
-  expect(photoUrl(upload)).toBe(`/api/photos/${upload}`);
+  expect(photoUrl(upload)).toBe(`/api/photos/${upload}?size=640`);
   const plan = createStarterPlan();
   for (const value of [upload, 'sketch-soup', 'sketch-vegetables']) {
     plan.weekly!.images = { [plan.recipes[0].id]: value };

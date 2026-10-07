@@ -76,10 +76,11 @@ Private storage defaults to `data/`:
 - `households.sqlite`: membership, invitations, and personal language preferences.
 - `recipe-books.sqlite`: recipes, books, household access, and book invitations.
 - `recipe-photos/`: shared recipe photos.
+- `photo-cache/`: generated image sizes; safe to remove while the app is stopped, as they are recreated on demand.
 - `households/<id>/plan.sqlite`: the household plan and planned recipe snapshots.
 - `households/<id>/photos/`: uploaded recipe and meal photos.
 
-`MEAL_PREP_DB_PATH` sets the base database path; its parent directory contains the household storage. Keep the whole directory private and on persistent storage. Uploads are resized to at most 1200 pixels and stored as JPEGs. Replaced images are retained for Undo and existing references.
+`MEAL_PREP_DB_PATH` sets the base database path; its parent directory contains the household storage. Keep the whole directory private and on persistent storage. Uploads are resized to at most 1200 pixels and stored as JPEGs. Cards and dialogs load appropriately sized WebP versions generated on demand, including for existing uploads. Browsers retain these images and check access before reusing them. Replaced images are retained for Undo and existing references.
 
 For a backup, wait for saves to finish, stop the app, and copy the **whole storage directory**, including any SQLite `-wal` and `-shm` files. Restore with the app stopped and browser tabs closed, then restart. Existing document formats are upgraded automatically; never delete a database to resolve a migration error. The recipe-book migration runs during initialization on the first signed-in request, moving each existing collection into “Our recipes” while preserving planned snapshots. An interrupted migration resumes safely on retry. Close old browser tabs before upgrading; rolling back a storage migration requires the matching data backup.
 

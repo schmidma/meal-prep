@@ -16,6 +16,10 @@ cp package.json package-lock.json "$staging/$name/"
 # Optional framework integrations otherwise pull development tools into the archive.
 # Required runtime dependencies remain installed; the extracted archive is smoke-tested.
 npm ci --prefix "$staging/$name" --omit=dev --omit=optional --ignore-scripts
+# Sharp's Linux x64 runtime is optional to npm, but required for image resizing.
+# Copy the exact binaries installed from our lockfile without pulling in optional frameworks.
+mkdir -p "$staging/$name/node_modules/@img"
+cp -a node_modules/@img/sharp-linux-x64 node_modules/@img/sharp-libvips-linux-x64 "$staging/$name/node_modules/@img/"
 cp -a build LICENSE README.md "$staging/$name/"
 mkdir -p "$staging/$name/deploy"
 cp -a deploy/native "$staging/$name/deploy/"

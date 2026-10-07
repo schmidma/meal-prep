@@ -1,4 +1,4 @@
-import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, writeFile, stat } from 'node:fs/promises';
 import { dirname, join, resolve } from 'node:path';
 import { createHash } from 'node:crypto';
 export const MAX_PHOTO_BYTES = 2 * 1024 * 1024;
@@ -27,6 +27,17 @@ export async function readPhoto(id: string, householdId?: string) {
   if (!uploadIdPattern.test(id)) return undefined;
   try {
     return await readFile(join(directory(householdId), `${id}.jpg`));
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === 'ENOENT') return undefined;
+    throw error;
+  }
+}
+
+export async function photoPath(id: string, householdId: string) {
+  if (!uploadIdPattern.test(id)) return undefined;
+  const path = join(directory(householdId), `${id}.jpg`);
+  try {
+    return (await stat(path)).isFile() ? path : undefined;
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code === 'ENOENT') return undefined;
     throw error;

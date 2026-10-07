@@ -1398,8 +1398,8 @@
                       }}
                       onclick={() => openCooking(undefined, session)}
                       aria-label={i18n.t('planner.editCook', { name: session.name })}
-                      >{#if photoUrl(plan.weekly?.images?.[session.id])}<img
-                          src={photoUrl(plan.weekly?.images?.[session.id])}
+                      >{#if photoUrl(plan.weekly?.images?.[session.id], 320)}<img
+                          src={photoUrl(plan.weekly?.images?.[session.id], 320)}
                           alt=""
                         />{:else}<span class="wp-cooking-symbol"
                           ><Icon name="bowl" size={30} /></span
@@ -1542,9 +1542,9 @@
                             dropDay = '';
                           }}
                           onclick={() => newLeftover(batch)}
-                          >{#if photoUrl(plan.weekly?.images?.[batch.id])}<img
+                          >{#if photoUrl(plan.weekly?.images?.[batch.id], 320)}<img
                               class="wp-leftover-photo"
-                              src={photoUrl(plan.weekly?.images?.[batch.id])}
+                              src={photoUrl(plan.weekly?.images?.[batch.id], 320)}
                               alt=""
                             />{:else}<span class="wp-food-icon"><Icon name="bowl" size={21} /></span
                             >{/if}<span
@@ -1750,9 +1750,9 @@
                           }}
                           onclick={() => editMeal(activity)}
                           aria-label={i18n.t('planner.editMealNamed', { name: activity.title })}
-                          >{#if photoUrl(plan.weekly?.images?.[activity.id])}<img
+                          >{#if photoUrl(plan.weekly?.images?.[activity.id], 320)}<img
                               class="wp-meal-photo"
-                              src={photoUrl(plan.weekly?.images?.[activity.id])}
+                              src={photoUrl(plan.weekly?.images?.[activity.id], 320)}
                               alt=""
                               loading="lazy"
                             />{:else}<span class="wp-meal-symbol"
@@ -2156,8 +2156,8 @@
                     class="wp-ready-card"
                     onclick={() => chooseLeftover(batch)}
                   >
-                    {#if photoUrl(plan.weekly?.images?.[batch.id])}<img
-                        src={photoUrl(plan.weekly?.images?.[batch.id])}
+                    {#if photoUrl(plan.weekly?.images?.[batch.id], 320)}<img
+                        src={photoUrl(plan.weekly?.images?.[batch.id], 320)}
                         alt=""
                       />{/if}<span
                       ><strong>{batch.name}</strong><small

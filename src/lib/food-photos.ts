@@ -39,8 +39,8 @@ export function isPhotoId(id: unknown): id is string {
       /^upload-[a-f0-9]{64}$/.test(id))
   );
 }
-export function photoUrl(id: string | undefined): string {
-  if (id && /^upload-[a-f0-9]{64}$/.test(id)) return `/api/photos/${id}`;
+export function photoUrl(id: string | undefined, size: 320 | 640 | 1200 = 640): string {
+  if (id && /^upload-[a-f0-9]{64}$/.test(id)) return `/api/photos/${id}?size=${size}`;
   if (foodPhotos.some((photo) => photo.id === id)) return `/images/food/${id}.png`;
   const sketch = illustrationId(id);
   return `/images/illustrations/${sketch.slice(7)}.webp`;
